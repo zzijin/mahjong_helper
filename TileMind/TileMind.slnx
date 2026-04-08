@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="TileMind.AI/TileMind.AI.csproj" Id="d0462c7e-7e81-4e41-86f7-38493b670275" />
   <Project Path="TileMind.Common/TileMind.Common.csproj" Id="8060f68f-83a1-4934-8589-06bb350b5b96" />
+  <Project Path="TileMind.Console/TileMind.Console.csproj" Id="aada63c6-1b44-455e-9be5-d51352aecc9c" />
   <Project Path="TileMind.Core/TileMind.Core.csproj" Id="17fb3c7f-a24f-4b4a-b4d1-dcde0be925fd" />
   <Project Path="TileMind.UI/TileMind.UI.csproj" Id="c03441ee-5aba-46a9-819e-647bb3fd94a5" />
   <Project Path="TileMind.Vision/TileMind.Vision.csproj" Id="940a14b3-ca8f-4a35-9fa3-d46116fd94ff" />

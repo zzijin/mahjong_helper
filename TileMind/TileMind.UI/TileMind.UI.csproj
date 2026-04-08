@@ -16,4 +16,8 @@
     <Folder Include="ViewModels\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TileMind.Vision\TileMind.Vision.csproj" />
+  </ItemGroup>
+
 </Project>
