@@ -35,17 +35,18 @@ namespace TileMind.Console
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
 
-                var image = screenCaptureService.CaptureFrame();
-                if( image == null ) 
-                {
-                    System.Console.WriteLine($"Failed to capture screen {i}.");
-                    continue;
-                }
+                //var image = screenCaptureService.CaptureFrame();
+                //if( image == null ) 
+                //{
+                //    System.Console.WriteLine($"Failed to capture screen {i}.");
+                //    continue;
+                //}
                 //var detections = yoloDetector.Detect(imagePath);
                 //var detections = yoloDetector.Detect(image);
 
                 //yoloDetector.DetectAndSave(@".\testdatas\0250.png", $@".\testdatas\0250_output_{i}.png");
-                yoloDetector.DetectAndSave(image, $@".\testdatas\capture_output_{i}.png");
+                //yoloDetector.DetectAndSave(image, $@".\testdatas\capture_output_{i}.png");
+                var fusionResult = frameFusionService.ProcessFrameFusion();
 
                 stopwatch.Stop();
                 System.Console.WriteLine($"Detection completed {i} in {stopwatch.ElapsedMilliseconds} ms");

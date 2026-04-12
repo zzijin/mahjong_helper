@@ -26,9 +26,9 @@ namespace TileMind.Common.Config
         public int InputSize { get; set; } = 1280;
 
         //检测器池的最小大小
-        public int MinDetectorPoolSize { get; set; } = 2;
+        public int MinDetectorPoolSize { get; set; } = 5;
         //检测器池的最大大小
-        public int MaxDetectorPoolSize { get; set; } = 6;
+        public int MaxDetectorPoolSize { get; set; } = 10;
         //获取检测器实例的超时时间，单位秒
         public int RentTimeoutSeconds { get; set; } = 5;
     }

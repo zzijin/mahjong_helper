@@ -50,6 +50,12 @@ namespace TileMind.Vision.ScreenCapture
             // 1. 快速连续采集多帧图像
             var frames = CaptureMultipleFrames(_fusionFrameCount);
 
+            if(frames.Count == 0)
+            {
+                _logger.LogError("未能采集到任何帧，跳过融合处理。");
+                return new List<DetectionResult>();
+            }
+
             // 2. 检测场景是否发生显著变化，若无变化则返回上次结果，节省计算
             if (frames.Count >= 2 && !HasSceneChanged(frames[0], frames[1]))
             {
@@ -62,18 +68,24 @@ namespace TileMind.Vision.ScreenCapture
             var detectionTasks = new List<Task<List<DetectionResult>>>();
             foreach (var frame in frames)
             {
-                detectionTasks.Add(Task.Run(() =>
+                var mat = frame;
+                detectionTasks.Add(Task.Run(async () =>
                 {
                     // 从对象池获取一个检测器实例
-                    var detector = _detectorPool.Rent();
+                    var detector = await _detectorPool.RentAsync();
+                    if(detector == null)
+                    {
+                        _logger.LogError("无法从对象池获取检测器实例，跳过当前帧的检测。");
+                        return [];
+                    }
                     try
                     {
                         // 将 Bitmap 转换为 Mat 以供检测器使用
-                        using (var mat = frame)
-                        {
-                            // 执行检测
-                            return detector.Detect(mat);
-                        }
+                        // 执行检测
+                        var result = detector.Detect(mat);
+
+                        mat.Dispose();
+                        return result;
                     }
                     finally
                     {
@@ -125,12 +137,10 @@ namespace TileMind.Vision.ScreenCapture
         /// </summary>
         private bool HasSceneChanged(Mat frame1, Mat frame2)
         {
-            using (var mat1 = frame1)
-            using (var mat2 = frame2)
             using (var diff = new Mat())
             {
                 // 计算两帧的绝对差
-                Cv2.Absdiff(mat1, mat2, diff);
+                Cv2.Absdiff(frame1, frame2, diff);
                 // 转换为灰度图并计算平均值，得到差异度
                 Cv2.CvtColor(diff, diff, ColorConversionCodes.BGR2GRAY);
                 var meanDiff = diff.Mean().Val0 / 255.0;
