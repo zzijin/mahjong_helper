@@ -7,6 +7,6 @@ namespace TileMind.Vision.ScreenCapture
 {
     public interface IScreenCaptureService
     {
-        Mat? CaptureWindow();
+        Mat? CaptureFrame(int timeoutMs = 10);
     }
 }

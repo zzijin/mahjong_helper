@@ -10,6 +10,7 @@
 //using Device = SharpDX.Direct3D11.Device;
 //using System.Threading.Tasks;
 
+//Microsoft.Windows.SDK.Contracts不支持.NET5以上
 namespace TileMind.Vision.ScreenCapture
 {
     //部分函数已过时，需要检查函数，暂不使用

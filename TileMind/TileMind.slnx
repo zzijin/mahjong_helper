@@ -1,4 +1,5 @@
 <Solution>
+  <Folder Name="/Dependency/" />
   <Project Path="TileMind.AI/TileMind.AI.csproj" Id="d0462c7e-7e81-4e41-86f7-38493b670275" />
   <Project Path="TileMind.Common/TileMind.Common.csproj" Id="8060f68f-83a1-4934-8589-06bb350b5b96" />
   <Project Path="TileMind.Console/TileMind.Console.csproj" Id="aada63c6-1b44-455e-9be5-d51352aecc9c" />

@@ -1,6 +1,9 @@
-﻿using OpenCvSharp;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenCvSharp;
 using System.Collections.Concurrent;
 using System.Drawing;
+using TileMind.Common.Config;
 using TileMind.Vision.Detection;
 
 namespace TileMind.Vision.ScreenCapture
@@ -10,8 +13,9 @@ namespace TileMind.Vision.ScreenCapture
     /// </summary>
     public class FrameFusionService
     {
-        private readonly Yolov8DetectorPool _detectorPool;
+        private readonly YoloDetectorPoolService _detectorPool;
         private readonly IScreenCaptureService _captureService;
+        private readonly ILogger<FrameFusionService> _logger;
 
         // 融合参数
         private readonly int _fusionFrameCount;       // 参与融合的帧数量，例如 3 帧
@@ -23,19 +27,18 @@ namespace TileMind.Vision.ScreenCapture
         private readonly ConcurrentQueue<FusionFrameData> _frameCache = new ConcurrentQueue<FusionFrameData>();
 
         public FrameFusionService(
-            Yolov8DetectorPool detectorPool,
-            IScreenCaptureService captureService,
-            int fusionFrameCount = 3,
-            float movementThreshold = 0.05f,
-            float confidenceThreshold = 0.5f,
-            float iouThreshold = 0.5f)
+            YoloDetectorPoolService detectorPool,
+            IScreenCaptureService captureService, IOptionsSnapshot<FrameFusionOptions> options, ILogger<FrameFusionService> logger)
         {
             _detectorPool = detectorPool;
             _captureService = captureService;
-            _fusionFrameCount = fusionFrameCount;
-            _movementThreshold = movementThreshold;
-            _confidenceThreshold = confidenceThreshold;
-            _iouThreshold = iouThreshold;
+            _logger = logger;
+
+            var opts = options.Value;
+            _fusionFrameCount = opts.MaxFusionFrameCount;
+            _movementThreshold = opts.MovementThreshold;
+            _confidenceThreshold = opts.FusionConfidenceThreshold;
+            _iouThreshold = opts.FusionIouThreshold;
         }
 
         /// <summary>
@@ -108,7 +111,7 @@ namespace TileMind.Vision.ScreenCapture
             var frames = new List<Mat>();
             for (int i = 0; i < frameCount; i++)
             {
-                var frame = _captureService.CaptureWindow();
+                var frame = _captureService.CaptureFrame();
                 if (frame != null)
                     frames.Add(frame);
                 else
