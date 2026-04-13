@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace TileMind.UI.Views
+namespace TileMind.UI.View
 {
     /// <summary>
     /// OverlayWindow.xaml 的交互逻辑

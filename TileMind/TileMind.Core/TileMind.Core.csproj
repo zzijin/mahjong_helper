@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Services\" />
+    <ProjectReference Include="..\TileMind.AI\TileMind.AI.csproj" />
+    <ProjectReference Include="..\TileMind.Common\TileMind.Common.csproj" />
+    <ProjectReference Include="..\TileMind.Vision\TileMind.Vision.csproj" />
   </ItemGroup>
 
 </Project>
