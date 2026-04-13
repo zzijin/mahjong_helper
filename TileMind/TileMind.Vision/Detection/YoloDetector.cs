@@ -136,14 +136,14 @@ namespace TileMind.Vision.Detection
         /// </summary>
         /// <param name="imagePath">图片文件路径。</param>
         /// <returns>检测结果列表。</returns>
-        public List<DetectionResult> Detect(string imagePath)
+        internal List<DetectionResult> Detect(string imagePath)
         {
             using var image = new Mat(imagePath);
             return Detect(image);
         }
 
         //使用半精度模型时的性能还需优化
-        public List<DetectionResult> Detect(Mat image)
+        internal List<DetectionResult> Detect(Mat image)
         {
             if (image.Empty())
                 _logger.LogWarning("输入图像为空，无法进行检测。");
@@ -460,13 +460,13 @@ namespace TileMind.Vision.Detection
             return intersectionArea / unionArea;
         }
 
-        public void SaveDetections(Mat image, List<DetectionResult> detections, string outputPath)
+        internal void SaveDetections(Mat image, List<DetectionResult> detections, string outputPath)
         {
             var annotatedImage = DrawDetections(image, detections);
             annotatedImage.SaveImage(outputPath);
         }
 
-        public Mat DrawDetections(Mat image, List<DetectionResult> detections)
+        internal Mat DrawDetections(Mat image, List<DetectionResult> detections)
         {
             // 1. 复制图像（可选，避免修改原图）
             Mat annotatedImage = image.Clone();
@@ -514,20 +514,5 @@ namespace TileMind.Vision.Detection
             }
             GC.SuppressFinalize(this);
         }
-    }
-
-    /// <summary>
-    /// 检测结果类。
-    /// </summary>
-    public class DetectionResult
-    {
-        // 类型ID
-        public int ClassId { get; set; }
-        //类型名称
-        public required string ClassName { get; set; }
-        //置信度
-        public float Confidence { get; set; }
-        //边框
-        public Rect BoundingBox { get; set; }
     }
 }
