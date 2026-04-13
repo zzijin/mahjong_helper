@@ -44,6 +44,6 @@ Yolov8
 
 ### UI界面
 
-## 许可证
+## 工作记录
 
-![GPL-v3](https://www.gnu.org/graphics/gplv3-127x51.png)
+2026.04.13 已完成覆盖层基础编写，需要整理项目结构，将Service移至Core项目，并自定义相关的结构在Common项目
