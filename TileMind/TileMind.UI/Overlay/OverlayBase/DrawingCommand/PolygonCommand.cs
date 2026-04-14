@@ -9,7 +9,7 @@ namespace TileMind.UI.Overlay.OverlayBase.DrawingCommand
 
     // ---------------------------------------------
     // PolygonCommand.cs
-    public class PolygonCommand : IDrawingCommand
+    public record class PolygonCommand : IDrawingCommand
     {
         public PointCollection Points { get; set; } = new PointCollection();
         public bool IsClosed { get; set; } = true;

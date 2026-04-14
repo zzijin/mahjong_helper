@@ -1,20 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Windows;
 using System.Windows.Media;
+using TileMind.Common.Models;
 using TileMind.UI.Overlay.OverlayBase.DrawingCommand;
-using TileMind.Vision.Detection;
 
 namespace TileMind.UI.Overlay
 {
-    public class MahjongTileCommandGenerator : IDrawingCommandGenerator<DetectionResult>
+    public class MahjongTileCommandGenerator : IDrawingCommandGenerator<TileDetectionResult>
     {
-        public IEnumerable<IDrawingCommand> GenerateCommands(DetectionResult tile)
+        public IEnumerable<IDrawingCommand> GenerateCommands(TileDetectionResult tile)
         {
             // 1. 绘制牌的外框
             yield return new RectangleCommand
             {
-                Rect = tile.BoundingBox,
+                Rect = tile.BoundingBox.ToWRect(),
                 CornerRadius = 4
             };
 

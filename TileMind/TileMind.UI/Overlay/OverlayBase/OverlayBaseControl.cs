@@ -26,7 +26,7 @@ namespace TileMind.UI.Overlay.OverlayBase
             set => SetValue(ItemsSourceProperty, value);
         }
 
-        // 全局样式属性（可被子类重写默认值）
+        // 统一控制覆盖层中所有填充画刷的不透明度
         public static readonly DependencyProperty FillOpacityProperty =
             DependencyProperty.Register(nameof(FillOpacity), typeof(double), typeof(OverlayBaseControl),
                 new FrameworkPropertyMetadata(0.3, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -85,7 +85,7 @@ namespace TileMind.UI.Overlay.OverlayBase
             var visual = new DrawingVisual();
             _visualMap[item] = visual;
             _visuals.Add(visual);
-            RenderItem(item);
+            RenderDrawingInfo(item);
         }
 
         private void RemoveVisualForItem(DrawingInfo item)
@@ -103,7 +103,7 @@ namespace TileMind.UI.Overlay.OverlayBase
         public void UpdateItemVisual(DrawingInfo item)
         {
             if (_visualMap.TryGetValue(item, out _))
-                RenderItem(item);
+                RenderDrawingInfo(item);
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace TileMind.UI.Overlay.OverlayBase
         public void RefreshAll()
         {
             foreach (var item in _visualMap.Keys)
-                RenderItem(item);
+                RenderDrawingInfo(item);
         }
 
         /// <summary>
@@ -125,27 +125,24 @@ namespace TileMind.UI.Overlay.OverlayBase
         }
 
         /// <summary>
-        /// 抽象方法：由子类实现如何将一个数据项转换为绘制命令集合
-        /// </summary>
-        protected abstract IEnumerable<IDrawingCommand> GenerateCommandsForItem(DrawingInfo item);
-
-        /// <summary>
         /// 抽象方法：由子类提供绘制时使用的填充画刷和描边画笔（可根据数据项动态决定）
         /// </summary>
         protected abstract (Brush fillBrush, Pen strokePen) GetDrawingStyles(DrawingInfo item);
 
-        private void RenderItem(DrawingInfo item)
+        private void RenderDrawingInfo(DrawingInfo info)
         {
-            if (!_visualMap.TryGetValue(item, out var visual))
+            if (!_visualMap.TryGetValue(info, out var visual))
                 return;
 
-            var commands = GenerateCommandsForItem(item);
-            var (fillBrush, strokePen) = GetDrawingStyles(item);
+            var (fillBrush, strokePen) = GetDrawingStyles(info);
 
             using (DrawingContext dc = visual.RenderOpen())
             {
-                dc.PushTransform(_renderTransform);
-                foreach (var cmd in commands)
+                // 根据是否需要变换来决定是否应用变换
+                if (info is ITransformable transformable && transformable.NeedsTransform)
+                    dc.PushTransform(_renderTransform);
+
+                foreach (var cmd in info.DrawingCommands)
                 {
                     cmd.Draw(dc, fillBrush, strokePen);
                 }

@@ -9,7 +9,7 @@ namespace TileMind.UI.Overlay.OverlayBase.DrawingCommand
 
     // ---------------------------------------------
     // TextCommand.cs
-    public class TextCommand : IDrawingCommand
+    public record class TextCommand : IDrawingCommand
     {
         public string Text { get; set; } = "";
         public Point Position { get; set; }                // 文本基线起点

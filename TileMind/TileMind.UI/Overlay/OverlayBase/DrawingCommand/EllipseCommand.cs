@@ -9,7 +9,7 @@ namespace TileMind.UI.Overlay.OverlayBase.DrawingCommand
 
     // ---------------------------------------------
     // EllipseCommand.cs
-    public class EllipseCommand : IDrawingCommand
+    public record class EllipseCommand : IDrawingCommand
     {
         public Point Center { get; set; }
         public double RadiusX { get; set; }

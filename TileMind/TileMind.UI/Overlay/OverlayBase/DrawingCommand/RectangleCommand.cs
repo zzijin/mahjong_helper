@@ -10,9 +10,9 @@ namespace TileMind.UI.Overlay.OverlayBase.DrawingCommand
 
     // ---------------------------------------------
     // RectangleCommand.cs
-    public class RectangleCommand : IDrawingCommand
+    public record class RectangleCommand : IDrawingCommand
     {
-        public Rect Rect { get; set; }
+        public Rect Rect { get; set; } = Rect.Empty;
         public double CornerRadius { get; set; } = 0;
 
         public void Draw(DrawingContext dc, Brush fillBrush, Pen strokePen)
