@@ -12,8 +12,4 @@
     <PackageReference Include="ZLogger" Version="2.5.10" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Helpers\" />
-  </ItemGroup>
-
 </Project>
