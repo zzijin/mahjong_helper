@@ -5,7 +5,7 @@ using System.Text;
 
 namespace TileMind.Vision.Detection
 {
-    internal class DetectionResult
+    public class DetectionResult
     {
         // 类型ID
         public int ClassId { get; set; }
