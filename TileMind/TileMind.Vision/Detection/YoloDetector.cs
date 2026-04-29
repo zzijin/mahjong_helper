@@ -135,14 +135,14 @@ namespace TileMind.Vision.Detection
         /// </summary>
         /// <param name="imagePath">图片文件路径。</param>
         /// <returns>检测结果列表。</returns>
-        internal List<DetectionResult> Detect(string imagePath)
+        public List<DetectionResult> Detect(string imagePath)
         {
             using var image = new Mat(imagePath);
             return Detect(image);
         }
 
         //使用半精度模型时的性能还需优化
-        internal List<DetectionResult> Detect(Mat image)
+        public List<DetectionResult> Detect(Mat image)
         {
             if (image.Empty())
                 _logger.LogWarning("输入图像为空，无法进行检测。");

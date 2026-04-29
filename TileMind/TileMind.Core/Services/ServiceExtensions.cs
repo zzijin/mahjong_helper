@@ -20,7 +20,7 @@ namespace TileMind.Core.Services
             {
                 var config = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json")
+                    //.AddJsonFile("appsettings.json")
                     // 视觉配置文件，当配置发生变化时自动重新加载配置
                     .AddJsonFile(YoloOptions.SettingFilePath, optional: true, reloadOnChange: true)
                     .AddJsonFile(ScreenCaptureOptions.SettingFilePath, optional: true, reloadOnChange: true)
@@ -32,6 +32,7 @@ namespace TileMind.Core.Services
                 services.Configure<YoloOptions>(config.GetSection("Yolo"));
                 services.Configure<ScreenCaptureOptions>(config.GetSection("ScreenCapture"));
                 services.Configure<FrameFusionOptions>(config.GetSection("FrameFusion"));
+                services.Configure<GameStateTrackerOptions>(config.GetSection("GameState"));
             }
 
             public void AddBaseServices()
@@ -43,6 +44,13 @@ namespace TileMind.Core.Services
                 services.AddScoped<YoloDetectorPoolService>();
                 services.AddScoped<IScreenCaptureService, DxgiScreenCaptureService>();
                 services.AddScoped<FrameFusionService>();
+
+                //注册游戏状态追踪服务
+                services.AddSingleton<GameStateTracker>();
+                services.AddSingleton<GameRecorderService>();
+
+                //注册流水线服务（连接 Vision → Core）
+                services.AddScoped<GamePipelineService>();
 
                 //注册AI服务
             }
