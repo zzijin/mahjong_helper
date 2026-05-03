@@ -7,6 +7,7 @@ using OpenCvSharp;
 using SharpDX;
 using System.Diagnostics;
 using TileMind.Common.Config;
+using TileMind.Common.Helpers;
 using TileMind.Common.Logging;
 using TileMind.Core.Services;
 using TileMind.Vision.Detection;
@@ -18,15 +19,27 @@ namespace TileMind.Console
     {
         static void Main(string[] args)
         {
-            var imagePath = @".\testdatas\0245.png";
 
             var services = new ServiceCollection();
             ConfigureServices(services);
             var _serviceProvider = services.BuildServiceProvider();
 
-            var yoloDetectorPool = _serviceProvider.GetRequiredService<YoloDetectorPoolService>();
-            var screenCaptureService = _serviceProvider.GetRequiredService<IScreenCaptureService>();
-            var frameFusionService = _serviceProvider.GetRequiredService<FrameFusionService>();
+            //YoloDetectorPoolService_Test(_serviceProvider);
+            GameRecorderService_Test(_serviceProvider);
+
+
+            System.Console.WriteLine("Press Enter to exit...");
+            System.Console.ReadLine();
+        }
+
+        private static void YoloDetectorPoolService_Test(ServiceProvider serviceProvider)
+        {
+            var imagePath = @".\testdatas\0245.png";
+
+            var yoloDetectorPool = serviceProvider.GetRequiredService<YoloDetectorPoolService>();
+            var screenCaptureService = serviceProvider.GetRequiredService<IScreenCaptureService>();
+            var frameFusionService = serviceProvider.GetRequiredService<FrameFusionService>();
+            var gameRecorderService = serviceProvider.GetRequiredService<GameRecorderService>();
 
             var yoloDetector = yoloDetectorPool.Rent();
 
@@ -46,15 +59,28 @@ namespace TileMind.Console
                 //var detections = yoloDetector.Detect(image);
 
                 //yoloDetector.DetectAndSave(@".\testdatas\0250.png", $@".\testdatas\0250_output_{i}.png");
-                yoloDetector.DetectAndSave(image, $@".\testdatas\capture_output_{i}.png");
+                //yoloDetector.DetectAndSave(image, $@".\testdatas\capture_output_{i}.png");
                 //var fusionResult = frameFusionService.ProcessFrameFusion();
 
                 stopwatch.Stop();
                 System.Console.WriteLine($"Detection completed {i} in {stopwatch.ElapsedMilliseconds} ms");
-            };
+            }
+            ;
+        }
 
-            System.Console.WriteLine("Press Enter to exit...");
-            System.Console.ReadLine();
+        private static void GameRecorderService_Test(ServiceProvider serviceProvider)
+        {
+            var yoloDetectorPool = serviceProvider.GetRequiredService<YoloDetectorPoolService>();
+            var gamePipelineService = serviceProvider.GetRequiredService<GamePipelineService>();
+
+            var yoloDetector = yoloDetectorPool.Rent();
+            gamePipelineService.StartNewRound();
+            for (int i = 0; i < 10; i++)
+            {
+                var imagePath = @$".\testdatas\{i:D4}.png";
+                var detections = yoloDetector.Detect(imagePath);
+                gamePipelineService.ProcessFrame();
+            } 
         }
 
         private static Dictionary<string,string> GetVisionConfig()

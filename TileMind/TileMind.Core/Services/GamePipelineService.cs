@@ -63,7 +63,7 @@ public class GamePipelineService
             return new();
         }
 
-        ProcessFrame(fullScreenDetections);
+        return ProcessFrame(fullScreenDetections);
     }
 
     public List<MahjongAction> ProcessFrame(List<DetectionResult> fullScreenDetections)

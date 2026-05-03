@@ -8,13 +8,13 @@ namespace TileMind.UI.Overlay
     {
         extension(System.Windows.Rect wrect)
         {
-            public TileMind.Common.Models.Rect ToMRect()
+            public OpenCvSharp.Rect ToMRect()
             {
-                return new TileMind.Common.Models.Rect((int)wrect.X, (int)wrect.Y, (int)wrect.Width, (int)wrect.Height);
+                return new OpenCvSharp.Rect((int)wrect.X, (int)wrect.Y, (int)wrect.Width, (int)wrect.Height);
             }
         }
 
-        extension(TileMind.Common.Models.Rect rect)
+        extension(OpenCvSharp.Rect rect)
         {
             public System.Windows.Rect ToWRect()
             {

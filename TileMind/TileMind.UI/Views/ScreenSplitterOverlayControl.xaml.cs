@@ -20,6 +20,12 @@ namespace TileMind.UI.Views
     public partial class ScreenSplitterOverlayControl : UserControl
     {
         ScreenSplitterViewModel _screenSplitterViewModel;
+
+        public Point[] DoraIndicatorArea { get; private set ; }
+        public Point[] TableArea { get; private set ; }
+        public Point[] DiscardPondArea { get; private set ; }
+        public Point[] InfoArea { get; private set ; }
+
         public ScreenSplitterOverlayControl(ScreenSplitterViewModel screenSplitterViewModel)
         {
             _screenSplitterViewModel = screenSplitterViewModel;
@@ -56,13 +62,13 @@ namespace TileMind.UI.Views
 
             // 2. 四边形B四条边延长至A边界
             // 上边（P1->P0）延长到A边界
-            DrawExtendedLineToBoundary(b[1], b[0], a, Colors.Blue, 1);
+            var intersectA = DrawExtendedLineToBoundary(b[1], b[0], a, Colors.Blue, 1);
             // 下边（P2->P1）延长到A边界
-            DrawExtendedLineToBoundary(b[2], b[1], a, Colors.Blue, 1);
+            var intersectB = DrawExtendedLineToBoundary(b[2], b[1], a, Colors.Blue, 1);
             // 左边（P3->P2）延长到A边界
-            DrawExtendedLineToBoundary(b[3], b[2], a, Colors.Blue, 1);
+            var intersectC = DrawExtendedLineToBoundary(b[3], b[2], a, Colors.Blue, 1);
             // 右边（P0->P3）延长到A边界
-            DrawExtendedLineToBoundary(b[0], b[3], a, Colors.Blue, 1);
+            var intersectD = DrawExtendedLineToBoundary(b[0], b[3], a, Colors.Blue, 1);
             // 可选：绘制四边形D对角线或轮廓（可根据需要添加）
         }
 
@@ -84,10 +90,11 @@ namespace TileMind.UI.Views
         /// 从起点 start 沿方向 dir 发射射线，找到与多边形 polygon 的第一个交点（正方向），
         /// 并绘制从 start 到交点的线段。
         /// </summary>
-        private void DrawExtendedLineToBoundary(Point start, Point end, Point[] polygon, Color color, double thickness)
+        private Point DrawExtendedLineToBoundary(Point start, Point end, Point[] polygon, Color color, double thickness)
         {
+            Point intersect;
             Vector dir = end - start;
-            if (dir.LengthSquared < 0.001) return;
+            if (dir.LengthSquared < 0.001) return intersect;
 
             // 寻找射线与多边形各边的交点，且要求交点在射线的正方向上（t >= 0）
 
@@ -96,11 +103,12 @@ namespace TileMind.UI.Views
                 Point edgeStart = polygon[i];
                 Point edgeEnd = polygon[(i + 1) % 4];
 
-                if (RayIntersectsSegment(start, end, edgeStart, edgeEnd, out Point intersect))
+                if (RayIntersectsSegment(start, end, edgeStart, edgeEnd, out intersect))
                 {
                     DrawLine(end, intersect, color, thickness);
                 }
             }
+            return intersect;
         }
 
         /// <summary>
@@ -162,5 +170,31 @@ namespace TileMind.UI.Views
         }
 
         // 可进一步提供计算玩家牌河区域（四个梯形/四边形）和手牌区域的方法
+
+
+        // 相对坐标转换为绝对坐标（相对于整个屏幕）
+        public Point[] ToAbsolute(Point[] relativePoints)
+        {
+            // 这里假设 QuadA 是整个屏幕的边界
+            Point[] absolutePoints = new Point[relativePoints.Length];
+            for (int i = 0; i < relativePoints.Length; i++)
+            {
+                Point abs = PointToScreen(relativePoints[i]);
+                absolutePoints[i] = abs;
+            }
+            return absolutePoints;
+        }
+
+        // 绝对坐标转换为相对坐标（相对于本控件）
+        public Point[] ToRelative(Point[] absolutePoints)
+        {
+            Point[] relativePoints = new Point[absolutePoints.Length];
+            for (int i = 0; i < absolutePoints.Length; i++)
+            {
+                Point rel = PointFromScreen(absolutePoints[i]);
+                relativePoints[i] = rel;
+            }
+            return relativePoints;
+        }
     }
 }
