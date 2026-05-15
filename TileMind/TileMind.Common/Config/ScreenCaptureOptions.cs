@@ -56,5 +56,24 @@ namespace TileMind.Common.Config
         //上家弃牌区
         [JsonIgnore]
         public Point[] LeftDiscardPondArea { get; set; } = new Point[4];
+
+        /// <summary>从另一实例复制所有区域值（用于 Reload 时原地更新单例）。</summary>
+        public void CopyFrom(ScreenCaptureOptions other)
+        {
+            AdapterIndex = other.AdapterIndex;
+            OutputIndex = other.OutputIndex;
+            DoraIndicatorArea = other.DoraIndicatorArea;
+            TableArea = other.TableArea;
+            DiscardPondArea = other.DiscardPondArea;
+            InfoArea = other.InfoArea;
+            SelfHandAndMeldArea = other.SelfHandAndMeldArea;
+            SelfDiscardPondArea = other.SelfDiscardPondArea;
+            RightHandAndMeldArea = other.RightHandAndMeldArea;
+            RightDiscardPondArea = other.RightDiscardPondArea;
+            OppositeHandAndMeldArea = other.OppositeHandAndMeldArea;
+            OppositeDiscardPondArea = other.OppositeDiscardPondArea;
+            LeftHandAndMeldArea = other.LeftHandAndMeldArea;
+            LeftDiscardPondArea = other.LeftDiscardPondArea;
+        }
     }
 }

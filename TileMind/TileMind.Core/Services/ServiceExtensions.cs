@@ -1,10 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using TileMind.Common.Config;
+using TileMind.Common.Helpers;
 using TileMind.Common.Logging;
 using TileMind.Vision.Detection;
 using TileMind.Vision.ScreenCapture;
@@ -23,16 +21,19 @@ namespace TileMind.Core.Services
                     //.AddJsonFile("appsettings.json")
                     // 视觉配置文件，当配置发生变化时自动重新加载配置
                     .AddJsonFile(YoloOptions.SettingFilePath, optional: true, reloadOnChange: true)
-                    .AddJsonFile(ScreenCaptureOptions.SettingFilePath, optional: true, reloadOnChange: true)
                     .AddJsonFile(FrameFusionOptions.SettingFilePath, optional: true, reloadOnChange: true)
                     .Build();
 
                 services.AddOptions();
                 services.AddSingleton<IConfiguration>(config);
                 services.Configure<YoloOptions>(config.GetSection("Yolo"));
-                services.Configure<ScreenCaptureOptions>(config.GetSection("ScreenCapture"));
                 services.Configure<FrameFusionOptions>(config.GetSection("FrameFusion"));
                 services.Configure<GameStateTrackerOptions>(config.GetSection("GameState"));
+
+                // ScreenCaptureOptions 含 OpenCvSharp.Point[]，MS Config 无法绑定，改用 System.Text.Json 直接加载
+                var screenOpts = SettingConfigExtensions.Load<ScreenCaptureOptions>(
+                    ScreenCaptureOptions.SettingFilePath) ?? new ScreenCaptureOptions();
+                services.AddSingleton(screenOpts);
             }
 
             public void AddBaseServices()

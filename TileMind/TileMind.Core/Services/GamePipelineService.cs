@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using OpenCvSharp;
 using TileMind.Common.Config;
 using TileMind.Common.Models;
@@ -22,12 +21,12 @@ public class GamePipelineService
     public GamePipelineService(
         FrameFusionService frameFusion,
         GameRecorderService gameRecorder,
-        IOptionsSnapshot<ScreenCaptureOptions> screenOpts,
+        ScreenCaptureOptions screenOpts,
         ILogger<GamePipelineService> logger)
     {
         _frameFusion = frameFusion;
         _gameRecorder = gameRecorder;
-        _screenOpts = screenOpts.Value;
+        _screenOpts = screenOpts;
         _logger = logger;
     }
 

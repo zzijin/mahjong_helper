@@ -59,6 +59,7 @@ namespace TileMind.UI
             services.AddSingleton<OverlayWindowViewModel>();
             services.AddSingleton<ScreenSplitterOverlayControl>();
             services.AddSingleton<ScreenSplitterViewModel>();
+            services.AddTransient<ScreenSplitterWindow>();
 
         }
 
