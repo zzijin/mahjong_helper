@@ -100,7 +100,9 @@ namespace TileMind.Vision.Detection
 
             if (_inputHeight == -1 || _inputWidth == -1)
             {
-                _logger.LogInformation($"模型支持动态输入尺寸，图像预处理将使用自适应模式。");
+                _inputHeight = opts.InputSize;
+                _inputWidth = opts.InputSize;
+                _logger.LogInformation($"模型支持动态输入尺寸，图像预处理将自动使用配置尺寸。");
             }
             else if (_inputHeight != opts.InputSize || _inputWidth != opts.InputSize)
             {
@@ -112,8 +114,8 @@ namespace TileMind.Vision.Detection
             var outputInfo = _session.OutputMetadata[_outputName];
             var outputShape = outputInfo.Dimensions;
             // 使用输入尺寸
-            _outputHeight = _inputHeight;
-            _outputWidth = _inputWidth;
+            _outputHeight = opts.InputSize;
+            _outputWidth = opts.InputSize;
             _outputType = outputInfo.ElementType;
         }
 
@@ -216,26 +218,18 @@ namespace TileMind.Vision.Detection
         /// </summary>
         private List<NamedOnnxValue> PreprocessImage<T>(Mat image) where T : unmanaged, INumber<T>, IMinMaxValue<T>
         {
-            Mat letterboxedImage;
-            if (_inputHeight != -1 && _inputWidth != -1)
-            {
-                // 创建一个 letterbox 区域，保持宽高比，并用灰色填充
-                letterboxedImage = new Mat(_inputHeight, _inputWidth, MatType.CV_8UC3, Scalar.Gray);
-                var scale = Math.Min((float)_inputWidth / image.Width, (float)_inputHeight / image.Height);
-                var scaledWidth = (int)(image.Width * scale);
-                var scaledHeight = (int)(image.Height * scale);
-                var offsetX = (_inputWidth - scaledWidth) / 2;
-                var offsetY = (_inputHeight - scaledHeight) / 2;
+            // 创建一个 letterbox 区域，保持宽高比，并用灰色填充
+            var letterboxedImage = new Mat(_inputHeight, _inputWidth, MatType.CV_8UC3, Scalar.Gray);
+            var scale = Math.Min((float)_inputWidth / image.Width, (float)_inputHeight / image.Height);
+            var scaledWidth = (int)(image.Width * scale);
+            var scaledHeight = (int)(image.Height * scale);
+            var offsetX = (_inputWidth - scaledWidth) / 2;
+            var offsetY = (_inputHeight - scaledHeight) / 2;
 
-                //调整图像大小并填充letterbox区域
-                using var resizedImage = new Mat();
-                Cv2.Resize(image, resizedImage, new Size(scaledWidth, scaledHeight));
-                resizedImage.CopyTo(new Mat(letterboxedImage, new Rect(offsetX, offsetY, scaledWidth, scaledHeight)));
-            }
-            else
-            {
-                letterboxedImage = image;
-            }
+            //调整图像大小并填充letterbox区域
+            using var resizedImage = new Mat();
+            Cv2.Resize(image, resizedImage, new Size(scaledWidth, scaledHeight));
+            resizedImage.CopyTo(new Mat(letterboxedImage, new Rect(offsetX, offsetY, scaledWidth, scaledHeight)));
 
             // BGR (OpenCV 默认) 转 RGB，并转换为 指定输入类型
             using var rgbImage = new Mat();
@@ -296,23 +290,13 @@ namespace TileMind.Vision.Detection
             }
 
             // 计算缩放和偏移量（使用 float 精度，因为涉及像素尺寸）
-
-            float offsetX = 0;
-            float offsetY = 0;
-            float scaleX = 1;
-            float scaleY = 1;
-
-            if (_outputHeight != -1 && _outputWidth != -1)
-            {
-                float scale = Math.Min((float)_outputWidth / originalWidth, (float)_outputHeight / originalHeight);
-                float scaledWidth = originalWidth * scale;
-                float scaledHeight = originalHeight * scale;
-
-                offsetX = (_outputWidth - scaledWidth) / 2f;
-                offsetY = (_outputHeight - scaledHeight) / 2f;
-                scaleX = originalWidth / scaledWidth;
-                scaleY = originalHeight / scaledHeight;
-            }
+            float scale = Math.Min((float) _outputWidth / originalWidth, (float)_outputHeight / originalHeight);
+            float scaledWidth = originalWidth * scale;
+            float scaledHeight = originalHeight * scale;
+            float offsetX = (_outputWidth - scaledWidth) / 2f;
+            float offsetY = (_outputHeight - scaledHeight) / 2f;
+            float scaleX = originalWidth / scaledWidth;
+            float scaleY = originalHeight / scaledHeight;
 
             // 将阈值转换为 T 类型，只做一次
             T confidenceThreshold = T.CreateSaturating(_confidenceThreshold);
@@ -477,13 +461,13 @@ namespace TileMind.Vision.Detection
             return intersectionArea / unionArea;
         }
 
-        internal void SaveDetections(Mat image, List<DetectionResult> detections, string outputPath)
+        private void SaveDetections(Mat image, List<DetectionResult> detections, string outputPath)
         {
             var annotatedImage = DrawDetections(image, detections);
             annotatedImage.SaveImage(outputPath);
         }
 
-        internal Mat DrawDetections(Mat image, List<DetectionResult> detections)
+        private Mat DrawDetections(Mat image, List<DetectionResult> detections)
         {
             // 1. 复制图像（可选，避免修改原图）
             Mat annotatedImage = image.Clone();
