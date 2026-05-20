@@ -42,6 +42,46 @@ namespace TileMind.Vision.ScreenCapture
             _iouThreshold = opts.FusionIouThreshold;
         }
 
+        public async Task<List<DetectionResult>> ProcessFrameFusionFromLocalAsync(string imagePath)
+        {
+            var fusionResult = await Task.Run(async () =>
+            {
+                // 从对象池获取一个检测器实例
+                var detector = await _detectorPool.RentAsync();
+                if (detector == null)
+                {
+                    _logger.LogError("无法从对象池获取检测器实例，跳过当前帧的检测。");
+                    return [];
+                }
+                try
+                {
+                    // 将 Bitmap 转换为 Mat 以供检测器使用
+                    // 执行检测
+                    var result = detector.Detect(imagePath);
+
+                    return result;
+                }
+                finally
+                {
+                    // 使用完毕后归还检测器到对象池
+                    _detectorPool.Return(detector);
+                }
+            });
+
+            _frameCache.Enqueue(new FusionFrameData
+            {
+                Timestamp = DateTime.UtcNow,
+                FusionResult = fusionResult
+            });
+
+            while (_frameCache.Count > _fusionFrameCount)
+            {
+                _frameCache.TryDequeue(out _);
+            }
+
+            return fusionResult;
+        }
+
         /// <summary>
         /// 执行一次多帧融合识别。
         /// </summary>

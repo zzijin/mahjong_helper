@@ -68,6 +68,31 @@ public class GamePipelineService
         return ProcessFrame(fullScreenDetections);
     }
 
+
+    public async Task<List<MahjongAction>> ProcessFrameFromLocalAsync(string imagePath)
+    {
+
+        // 1. 调用 Vision 层获取融合识别结果
+        List<DetectionResult> fullScreenDetections;
+        try
+        {
+            fullScreenDetections = await _frameFusion.ProcessFrameFusionFromLocalAsync(imagePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "FrameFusion 处理失败。");
+            return new();
+        }
+
+        if (fullScreenDetections.Count == 0)
+        {
+            _logger.LogDebug("本帧无检测结果。");
+            return new();
+        }
+
+        return ProcessFrame(fullScreenDetections);
+    }
+
     public List<MahjongAction> ProcessFrame(List<DetectionResult> fullScreenDetections)
     {
         if (fullScreenDetections.Count == 0)
