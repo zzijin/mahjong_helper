@@ -1,51 +1,63 @@
 # Mahjong Tool — 日麻 AI 辅助工具集
 
-基于 YOLOv8 + ONNX Runtime 的实时日麻对局分析与 AI 辅助项目，包含模型训练、数据标注、屏幕识别与对局状态追踪。
+基于 .NET 10 + ONNX Runtime 的实时日麻对局分析项目，覆盖 **模型训练 → 数据标注 → 屏幕识别 → 对局状态追踪 → AI 决策** 完整链路。
 
-## 项目目录
+## 项目结构
 
-| 目录 | 说明 |
-|------|------|
-| **[TileMind](./TileMind/README.md)** | 主程序 — 屏幕捕获、YOLOv8 推理、对局状态追踪、WPF 叠加层显示 |
-| **mahjong_dataset/** | YOLOv8 识别模型训练数据集（图片 + 标注） |
-| **mahjong_model/** | 训练实验输出与导出的 ONNX 模型（exp144-m, exp145-s, exp146-n 等） |
-| **mahjong_env/** | Python 训练环境（venv） |
-| **X-AnyLabeling/** | [标注工具](https://github.com/CVHub520/X-AnyLabeling)，用于标注麻将牌数据集 |
-| **runs/** | YOLO 训练运行日志与权重 |
+```
+mahjong_tool/
+├── TileMind/                # 主程序 (.NET 10, C#)
+│   ├── TileMind.Common/     #   共享模型、配置、日志
+│   ├── TileMind.Core/       #   DI 注册、对局状态追踪、动作分类
+│   ├── TileMind.Vision/     #   DXGI 屏幕捕获、YOLOv8 ONNX 推理、多帧融合
+│   ├── TileMind.AI/         #   AI 决策（占位）
+│   ├── TileMind.UI/         #   WPF 桌面应用、透明叠加层
+│   ├── TileMind.Console/    #   控制台测试入口
+│   └── Dependency/          #   原生依赖（cuDNN 等）
+│
+├── train.py                 # YOLOv8 模型训练脚本
+├── export_csharp.py         # 导出 ONNX 模型供 TileMind 推理
+├── export_label.py          # 标注数据导出/转换
+├── testenv.py               # 训练环境验证
+│
+├── mahjong_dataset/         # [本地] 训练数据集（图片 + YOLO 标注）
+├── mahjong_model/           # [本地] 训练实验输出与 ONNX 模型
+├── mahjong_env/             # [本地] Python venv 训练环境
+├── X-AnyLabeling/           # [本地] 标注工具（基于 X-AnyLabeling）
+├── runs/                    # [本地] YOLO 训练运行日志
+└── *.pt                     # [本地] YOLOv8 模型权重 (n/s/m)
+```
+
+## TileMind 主程序
+
+详见 **[TileMind/README.md](./TileMind/README.md)**，完整文档包含：
+
+- **架构概览** — 6 个项目分层设计（Common → Vision / Core / AI → UI）
+- **核心流程** — 屏幕捕获 → YOLOv8 推理 → 多帧融合 → 区域路由 → 状态追踪 → 叠加层显示
+- **对局状态追踪** — 帧间 IoU 匹配、手牌/副露分离、动作分类（摸/打/吃/碰/杠/加杠/暗杠）
+- **构建与运行** — 环境要求、构建命令、配置文件说明
 
 ## 模型训练
 
-### 识别类型
+### 识别类型（37 类）
 
-共 37 种牌型类别：
-
-| 类别 | 编号 |
+| 牌种 | 编号 |
 |------|------|
 | 万子 | 1m–9m, 0m（赤五万） |
 | 索子 | 1s–9s, 0s（赤五索） |
 | 筒子 | 1p–9p, 0p（赤五筒） |
 | 字牌 | 1z–7z（东南西北白发中） |
 
-### 基础模型
+## 开发状态
 
-YOLOv8（n / s / m），使用 [ultralytics](https://github.com/ultralytics/ultralytics) 框架训练。
-
-### 训练脚本
-
-| 文件 | 用途 |
+| 模块 | 状态 |
 |------|------|
-| `train.py` | 模型训练入口 |
-| `export_csharp.py` | 导出 ONNX 模型（供 TileMind 推理使用） |
-| `export_label.py` | 导出/转换标注数据 |
-
-### 标注工具
-
-使用 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling) 进行 YOLO 格式的麻将牌标注。
-
-## TileMind 主程序
-
-详见 **[TileMind/README.md](./TileMind/README.md)**，包含：
-- 架构概览与模块说明
-- 屏幕捕获 → YOLOv8 推理 → 区域路由 → 对局状态追踪 → UI 叠加层的完整流程
-- 构建与运行指南
-- 配置文件说明
+| TileMind.Common（数据模型、配置） | ✅ 完成 |
+| TileMind.Vision（屏幕捕获、YOLO 推理、多帧融合） | ✅ 完成 |
+| TileMind.Core（DI、状态追踪、动作分类） | ✅ 完成 |
+| TileMind.UI（WPF 框架、Overlay 绘制） | 🚧 框架完成，内容待完善 |
+| TileMind.AI（牌效分析、防守判断） | ⏳ 占位，待实现 |
+| 宝牌/InfoArea 解析 | ⏳ 待实现 |
+| 立直检测 | ⏳ 待实现 |
+| 对局记录导出（牌谱格式） | ⏳ 待实现 |
+| 单元测试 | ⏳ 待添加 |
