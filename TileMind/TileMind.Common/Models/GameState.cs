@@ -12,5 +12,6 @@ public class GameState
     public int Honba { get; set; }
     public int RemainingTiles { get; set; }
     public List<TrackedTile> DoraIndicators { get; set; } = new();
+    public SeatPosition? DealerSeat { get; set; }
     public bool IsFirstFrame { get; set; } = true;
 }

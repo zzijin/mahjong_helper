@@ -16,6 +16,7 @@ public class GamePipelineService
     private readonly FrameFusionService _frameFusion;
     private readonly GameRecorderService _gameRecorder;
     private readonly ScreenCaptureOptions _screenOpts;
+    private readonly PipelineOptions _pipelineOpts;
     private readonly FrameStateHub _frameStateHub;
     private readonly ILogger<GamePipelineService> _logger;
 
@@ -23,12 +24,14 @@ public class GamePipelineService
         FrameFusionService frameFusion,
         GameRecorderService gameRecorder,
         ScreenCaptureOptions screenOpts,
+        PipelineOptions pipelineOpts,
         FrameStateHub frameStateHub,
         ILogger<GamePipelineService> logger)
     {
         _frameFusion = frameFusion;
         _gameRecorder = gameRecorder;
         _screenOpts = screenOpts;
+        _pipelineOpts = pipelineOpts;
         _frameStateHub = frameStateHub;
         _logger = logger;
     }
@@ -103,8 +106,18 @@ public class GamePipelineService
 
         // 1. 按区域路由检测结果
         var frameInput = RouteDetections(fullScreenDetections);
-        // 2. 传入对局记录服务
-        var actions = _gameRecorder.ProcessFrame(frameInput);
+
+        // 2. 状态追踪（可选）
+        List<MahjongAction> actions;
+        if (_pipelineOpts.EnableStateTracking)
+        {
+            actions = _gameRecorder.ProcessFrame(frameInput);
+        }
+        else
+        {
+            actions = new();
+        }
+
         // 3. 通知 UI 覆盖层
         _frameStateHub.Publish(frameInput, actions);
         return actions;

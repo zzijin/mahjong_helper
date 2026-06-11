@@ -13,6 +13,7 @@ public class GameStateTracker
 {
     private readonly ILogger<GameStateTracker> _logger;
     private readonly GameStateTrackerOptions _options;
+    private readonly HandMeldSeparator _separator;
 
     private readonly Dictionary<SeatPosition, TileTracker> _handTrackers = new();
     private readonly Dictionary<SeatPosition, TileTracker> _pondTrackers = new();
@@ -28,6 +29,7 @@ public class GameStateTracker
     {
         _logger = logger;
         _options = options.Value;
+        _separator = new HandMeldSeparator(_options);
 
         foreach (SeatPosition seat in Enum.GetValues<SeatPosition>())
         {
@@ -94,13 +96,14 @@ public class GameStateTracker
     private PlayerFrameDelta ProcessPlayerFrame(
         SeatPosition seat, FrameDetections input, PlayerState playerState)
     {
-        // 获取该玩家的检测结果（手牌/副露已由 Pipeline 预分离）
-        input.HandOnlyDetections.TryGetValue(seat, out var handDets);
-        input.MeldGroupDetections.TryGetValue(seat, out var meldGroups);
+        // 获取该玩家的检测结果
+        input.HandAndMeldDetections.TryGetValue(seat, out var handMeldDets);
         input.DiscardPondDetections.TryGetValue(seat, out var pondDets);
-        handDets ??= new();
-        meldGroups ??= new();
+        handMeldDets ??= new();
         pondDets ??= new();
+
+        // 1. 分离手牌和副露
+        var (handDets, meldGroups) = _separator.Separate(handMeldDets, seat);
 
         // 2. 追踪手牌区域
         var handResult = _handTrackers[seat].Update(handDets, playerState.HandTiles);
@@ -235,10 +238,7 @@ public class GameStateTracker
             if (handMeldDets.Count == 0 && pondDets.Count == 0)
                 continue;
 
-            input.HandOnlyDetections.TryGetValue(seat, out var handDets);
-            input.MeldGroupDetections.TryGetValue(seat, out var meldGroups);
-            handDets ??= new();
-            meldGroups ??= new();
+            var (handDets, meldGroups) = _separator.Separate(handMeldDets, seat);
 
             // 初始化追踪器
             var handResult = _handTrackers[seat].Update(handDets, new());
@@ -337,25 +337,23 @@ public class GameStateTracker
     }
 
     /// <summary>
-    /// 判断当前帧是否场面清空：所有方向的弃牌区和副露区均无检测结果，
-    /// 且至少存在手牌检测（避免空白帧误触发）。
+    /// 判断当前帧是否场面清空：所有方向的弃牌区均无检测结果，
+    /// 且至少存在手牌+副露区检测（避免空白帧误触发）。
     /// </summary>
     private static bool IsBoardCleared(FrameDetections input)
     {
-        bool hasHandTiles = false;
+        bool hasHandMeldTiles = false;
 
         foreach (SeatPosition seat in Enum.GetValues<SeatPosition>())
         {
             input.DiscardPondDetections.TryGetValue(seat, out var pondDets);
-            input.MeldGroupDetections.TryGetValue(seat, out var meldGroups);
-            input.HandOnlyDetections.TryGetValue(seat, out var handDets);
+            input.HandAndMeldDetections.TryGetValue(seat, out var handMeldDets);
 
             if ((pondDets?.Count ?? 0) > 0) return false;
-            if ((meldGroups?.Count ?? 0) > 0) return false;
-            if ((handDets?.Count ?? 0) > 0) hasHandTiles = true;
+            if ((handMeldDets?.Count ?? 0) > 0) hasHandMeldTiles = true;
         }
 
-        return hasHandTiles;
+        return hasHandMeldTiles;
     }
 
     private void TrackDoraIndicators(List<DetectionResult> doraDets)
