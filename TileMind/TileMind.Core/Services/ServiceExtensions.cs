@@ -50,7 +50,10 @@ namespace TileMind.Core.Services
                 services.AddScoped<FrameFusionService>();
 
                 //注册事件中枢（连接 Core → UI）
-                services.AddScoped<FrameStateHub>();
+                services.AddSingleton<FrameStateHub>();
+
+                //注册静态分析服务
+                services.AddScoped<FrameAnalyzerService>();
 
                 //注册游戏状态追踪服务
                 services.AddScoped<GameStateTracker>();

@@ -28,7 +28,7 @@ public class GameRecorderService
     /// <summary>
     /// 处理一帧检测输入。
     /// </summary>
-    public List<MahjongAction> ProcessFrame(FrameDetections input)
+    public List<MahjongAction> ProcessFrame(AnalyzedFrame input)
     {
         _unprocessedActions.Clear();
         var actions = _tracker.ProcessFrame(input);

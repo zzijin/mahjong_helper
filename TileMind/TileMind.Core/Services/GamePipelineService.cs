@@ -7,13 +7,13 @@ using TileMind.Vision.ScreenCapture;
 namespace TileMind.Core.Services;
 
 /// <summary>
-/// 游戏流水线服务：连接 Vision 层的屏幕捕获/识别与 Core 层的对局状态追踪。
-/// 调用 FrameFusionService 获取全屏识别结果，按 ScreenCaptureOptions 定义的
-/// 各玩家区域四边形将检测结果路由至对应玩家/区域，最终传入 GameRecorderService。
+/// 游戏流水线服务：连接 Vision 层的屏幕捕获/识别与 Core 层的静态分析/状态追踪。
+/// 流程：帧融合 → 区域路由 → 静态分析 → [可选] 状态追踪 → UI 发布。
 /// </summary>
 public class GamePipelineService
 {
     private readonly FrameFusionService _frameFusion;
+    private readonly FrameAnalyzerService _analyzer;
     private readonly GameRecorderService _gameRecorder;
     private readonly ScreenCaptureOptions _screenOpts;
     private readonly PipelineOptions _pipelineOpts;
@@ -22,6 +22,7 @@ public class GamePipelineService
 
     public GamePipelineService(
         FrameFusionService frameFusion,
+        FrameAnalyzerService analyzer,
         GameRecorderService gameRecorder,
         ScreenCaptureOptions screenOpts,
         PipelineOptions pipelineOpts,
@@ -29,6 +30,7 @@ public class GamePipelineService
         ILogger<GamePipelineService> logger)
     {
         _frameFusion = frameFusion;
+        _analyzer = analyzer;
         _gameRecorder = gameRecorder;
         _screenOpts = screenOpts;
         _pipelineOpts = pipelineOpts;
@@ -45,12 +47,10 @@ public class GamePipelineService
     }
 
     /// <summary>
-    /// 执行一次完整的流水线步骤：采集 → 识别 → 融合 → 路由 → 状态追踪。
+    /// 执行一次完整的流水线步骤：采集 → 识别 → 融合 → 路由 → 静态分析 → [状态追踪] → UI。
     /// </summary>
-    /// <returns>本帧检测到的游戏动作列表。</returns>
     public List<MahjongAction> ProcessFrame()
     {
-        // 1. 调用 Vision 层获取融合识别结果
         List<DetectionResult> fullScreenDetections;
         try
         {
@@ -74,8 +74,6 @@ public class GamePipelineService
 
     public async Task<List<MahjongAction>> ProcessFrameFromLocalAsync(string imagePath)
     {
-
-        // 1. 调用 Vision 层获取融合识别结果
         List<DetectionResult> fullScreenDetections;
         try
         {
@@ -104,22 +102,28 @@ public class GamePipelineService
             return new();
         }
 
-        // 1. 按区域路由检测结果
+        // 1. 区域路由 → FrameDetections
         var frameInput = RouteDetections(fullScreenDetections);
 
-        // 2. 状态追踪（可选）
+        // 2. 静态分析 → AnalyzedFrame（两种模式都执行）
+        var analysis = _analyzer.Analyze(frameInput);
+
+        // 3. Stage 1 UI 发布（每帧都发）
+        _frameStateHub.PublishAnalysis(analysis);
+
+        // 4. 状态追踪（可选）
         List<MahjongAction> actions;
         if (_pipelineOpts.EnableStateTracking)
         {
-            actions = _gameRecorder.ProcessFrame(frameInput);
+            actions = _gameRecorder.ProcessFrame(analysis);
+            // Stage 2 UI 发布（仅追踪模式）
+            _frameStateHub.PublishActions(actions);
         }
         else
         {
             actions = new();
         }
 
-        // 3. 通知 UI 覆盖层
-        _frameStateHub.Publish(frameInput, actions);
         return actions;
     }
 
@@ -138,7 +142,6 @@ public class GamePipelineService
     {
         var frameInput = new FrameDetections { Timestamp = DateTime.UtcNow };
 
-        // 初始化各玩家区域的 bucket
         foreach (SeatPosition seat in Enum.GetValues<SeatPosition>())
         {
             frameInput.HandAndMeldDetections[seat] = new List<DetectionResult>();
@@ -151,14 +154,12 @@ public class GamePipelineService
                 det.BoundingBox.X + det.BoundingBox.Width / 2,
                 det.BoundingBox.Y + det.BoundingBox.Height / 2);
 
-            // 按优先级检查各区域（宝牌区优先，因为面积小、位置特殊）
             if (TryRouteToRegion(det, center, _screenOpts.DoraIndicatorArea))
             {
                 frameInput.DoraIndicatorDetections.Add(det);
                 continue;
             }
 
-            // 检查四个玩家的手牌+副露合并区域
             if (TryRouteToRegion(det, center, _screenOpts.SelfHandAndMeldArea))
             {
                 frameInput.HandAndMeldDetections[SeatPosition.Self].Add(det);
@@ -180,7 +181,6 @@ public class GamePipelineService
                 continue;
             }
 
-            // 检查四个玩家的弃牌区域
             if (TryRouteToRegion(det, center, _screenOpts.SelfDiscardPondArea))
             {
                 frameInput.DiscardPondDetections[SeatPosition.Self].Add(det);
@@ -201,29 +201,18 @@ public class GamePipelineService
                 frameInput.DiscardPondDetections[SeatPosition.Left].Add(det);
                 continue;
             }
-
-            // 不属于任何已知区域 → 忽略
         }
 
         return frameInput;
     }
 
-    /// <summary>
-    /// 判断检测结果中心点是否在给定四边形区域内。若区域未配置（全零）则返回 false。
-    /// </summary>
     private static bool TryRouteToRegion(DetectionResult det, Point center, Point[] quad)
     {
         if (quad.Length != 4) return false;
-
-        // 检查区域是否已配置（全零表示未配置）
         if (quad.All(p => p.X == 0 && p.Y == 0)) return false;
-
         return IsPointInQuadrilateral(center, quad);
     }
 
-    /// <summary>
-    /// 点是否在凸四边形内（cross product 法，兼容顺/逆时针顶点顺序）。
-    /// </summary>
     internal static bool IsPointInQuadrilateral(Point p, Point[] quad)
     {
         Span<int> signs = stackalloc int[4];
