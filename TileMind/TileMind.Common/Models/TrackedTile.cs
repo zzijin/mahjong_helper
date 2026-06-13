@@ -15,6 +15,9 @@ public class TrackedTile
     public DateTime LastSeen { get; set; }
     public int ConsecutiveMisses { get; set; }
 
+    /// <summary>牌的来源：null = 从牌山摸入，有值 = 从该玩家弃牌处获取（被吃/碰/杠）。</summary>
+    public SeatPosition? SourcePlayer { get; set; }
+
     public static TrackedTile FromDetection(DetectionResult detection, long trackId)
     {
         return new TrackedTile

@@ -115,9 +115,18 @@ public class GamePipelineService
         List<MahjongAction> actions;
         if (_pipelineOpts.EnableStateTracking)
         {
-            actions = _gameRecorder.ProcessFrame(analysis);
-            // Stage 2 UI 发布（仅追踪模式）
-            _frameStateHub.PublishActions(actions);
+            // 无法判定活跃玩家 → 疑似错误帧，跳过追踪（TODO: 待进一步思考阈值）
+            if (analysis.ActivePlayer == null)
+            {
+                _logger.LogDebug("静态分析无法判定活跃玩家，跳过本帧状态追踪。");
+                actions = new();
+            }
+            else
+            {
+                actions = _gameRecorder.ProcessFrame(analysis);
+                // Stage 2 UI 发布（仅追踪模式）
+                _frameStateHub.PublishActions(actions);
+            }
         }
         else
         {

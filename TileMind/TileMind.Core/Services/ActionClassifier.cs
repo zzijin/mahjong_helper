@@ -10,7 +10,7 @@ public class ActionClassifier
     /// <summary>
     /// 根据各玩家帧间增量分类动作。
     /// </summary>
-    public List<MahjongAction> Classify(Dictionary<SeatPosition, PlayerFrameDelta> deltas)
+    public List<MahjongAction> Classify(Dictionary<SeatPosition, PlayerFrameDelta> deltas, long frameNumber = 0)
     {
         var actions = new List<MahjongAction>();
 
@@ -18,7 +18,20 @@ public class ActionClassifier
         foreach (var (seat, delta) in deltas)
         {
             if (delta.HasNoChange) continue;
-            actions.AddRange(ClassifyPlayerActions(seat, delta));
+            var playerActions = ClassifyPlayerActions(seat, delta);
+
+            // 有变化但无法分类 → 记录警告日志
+            if (playerActions.Count == 0)
+            {
+                int hd = delta.CurrentHandCount - delta.PreviousHandCount;
+                int pd = delta.CurrentPondCount - delta.PreviousPondCount;
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ActionClassifier] 无法分类 帧{frameNumber} {seat} " +
+                    $"handΔ={hd:+0;-#} pondΔ={pd:+0;-#} " +
+                    $"meldΔ={delta.MeldsAdded.Count} kakan={delta.UpgradedMeldIndex}");
+            }
+
+            actions.AddRange(playerActions);
         }
 
         // Pass 2: 跨玩家关联（吃碰杠的来源）
@@ -151,7 +164,7 @@ public class ActionClassifier
     }
 
     /// <summary>
-    /// 跨玩家关联：为 Chi/Pon/Kan 找到被吃/碰/杠的弃牌来源。
+    /// 跨玩家关联：为 Chi/Pon/Kan 找到被吃/碰/杠的弃牌来源，并标记触发牌的 SourcePlayer。
     /// </summary>
     private static void EnrichMeldSources(
         List<MahjongAction> actions, Dictionary<SeatPosition, PlayerFrameDelta> deltas)
@@ -172,11 +185,12 @@ public class ActionClassifier
                 var discardTile = discard.Tiles.FirstOrDefault();
                 if (discardTile == null) continue;
 
-                bool tileInMeld = action.Tiles.Any(t =>
+                var triggerTile = action.Tiles.FirstOrDefault(t =>
                     NormalizeTileType(t.TileType) == NormalizeTileType(discardTile.TileType));
 
-                if (tileInMeld)
+                if (triggerTile != null)
                 {
+                    triggerTile.SourcePlayer = discard.Player;
                     actions[i] = action with { RelatedPlayer = discard.Player };
                     break;
                 }

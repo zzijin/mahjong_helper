@@ -12,6 +12,9 @@ public class AnalyzedFrame
     public List<DetectionResult> DoraIndicatorDetections { get; set; } = new();
     /// <summary>从指示牌推算出的实际宝牌（已去重）。</summary>
     public List<TileType> DoraTiles { get; set; } = new();
+
+    /// <summary>当前帧的活跃玩家（手牌+副露总数 = 14 + 杠数）。null 表示无法判定。</summary>
+    public SeatPosition? ActivePlayer { get; set; }
 }
 
 /// <summary>
@@ -24,6 +27,10 @@ public class PlayerFrameAnalysis
     public List<DetectionResult> HandTiles { get; set; } = new();
     /// <summary>副露组及其类型判定。</summary>
     public List<MeldAnalysis> Melds { get; set; } = new();
+    /// <summary>弃牌区是否检测到立直牌（横置牌）。</summary>
+    public bool HasRiichiDiscard { get; set; }
+    /// <summary>立直弃牌的具体检测框。</summary>
+    public DetectionResult? RiichiDiscardTile { get; set; }
 }
 
 /// <summary>

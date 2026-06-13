@@ -78,7 +78,7 @@ public class GameStateTracker
 
         // 分类动作
         var classifier = new ActionClassifier();
-        var actions = classifier.Classify(allDeltas);
+        var actions = classifier.Classify(allDeltas, _state.CurrentFrameNumber);
 
         foreach (var action in actions)
         {
@@ -108,6 +108,15 @@ public class GameStateTracker
         // 3. 计算增量
         int prevHandCount = playerState.HandTiles.Count;
         int prevPondCount = playerState.DiscardPondTiles.Count;
+
+        int pondDiff = pondResult.ActiveTiles.Count - prevPondCount;
+        // 牌河数量下降 ≥ 2 → 错误帧，跳过该玩家（TODO: 待进一步思考阈值）
+        if (pondDiff <= -2)
+        {
+            _logger.LogWarning("玩家 {Seat} 牌河数量异常下降 {Diff}（{Prev}→{Curr}），跳过本帧处理。",
+                seat, pondDiff, prevPondCount, pondResult.ActiveTiles.Count);
+            return new PlayerFrameDelta { Seat = seat };
+        }
 
         // 4. 检测新副露（与已有 MeldRecords 对比）
         var newMelds = DetectNewMelds(melds, playerState.MeldRecords, seat);

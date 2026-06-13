@@ -47,15 +47,79 @@ public class FrameAnalyzerService
                     Tiles = g
                 }).ToList();
 
+            result.DiscardPondDetections.TryGetValue(seat, out var pondDets);
+            pondDets ??= new();
+
             result.Players[seat] = new PlayerFrameAnalysis
             {
                 Seat = seat,
                 HandTiles = handDets,
-                Melds = melds
+                Melds = melds,
+                HasRiichiDiscard = DetectRiichi(seat, pondDets, out var riichiTile),
+                RiichiDiscardTile = riichiTile
             };
         }
 
+        // 判定活跃玩家
+        result.ActivePlayer = DetermineActivePlayer(result.Players);
+
         return result;
+    }
+
+    /// <summary>
+    /// 根据规则判定活跃玩家：手牌+副露总数 = 14 + 杠数。
+    /// 若无人精确满足，取总数最大的玩家；若仍无法判定返回 null。
+    /// </summary>
+    private static SeatPosition? DetermineActivePlayer(Dictionary<SeatPosition, PlayerFrameAnalysis> players)
+    {
+        SeatPosition? bestSeat = null;
+        int bestTotal = -1;
+        bool exactMatch = false;
+
+        foreach (var (seat, player) in players)
+        {
+            int total = player.HandTiles.Count + player.Melds.Sum(m => m.Tiles.Count);
+            int kanCount = player.Melds.Count(m =>
+                m.MeldType is MeldType.Kan or MeldType.Ankan or MeldType.Kakan);
+            int expected = 14 + kanCount;
+
+            if (total == expected)
+            {
+                if (!exactMatch) { bestSeat = seat; bestTotal = total; exactMatch = true; }
+                // 多个精确匹配 → 先到先得，后续可改为取 total 最大
+            }
+            else if (!exactMatch && total > bestTotal)
+            {
+                bestSeat = seat;
+                bestTotal = total;
+            }
+        }
+
+        return bestSeat;
+    }
+
+    /// <summary>
+    /// 立直检测：根据弃牌区检测框宽高比按座位方向判断。
+    /// 自家/对家：正常 h>w（竖），立直 w>h（横）。
+    /// 上家/下家：正常 w>h（横），立直 h>w（竖）。
+    /// </summary>
+    private static bool DetectRiichi(SeatPosition seat, List<DetectionResult> pondDets, out DetectionResult? riichiTile)
+    {
+        riichiTile = null;
+        foreach (var det in pondDets)
+        {
+            float ratio = (float)det.BoundingBox.Width / det.BoundingBox.Height;
+            bool isRotated = seat is SeatPosition.Self or SeatPosition.Opposite
+                ? ratio > 1.0f   // 横置：宽 > 高
+                : ratio < 1.0f;  // 竖置：高 > 宽
+
+            if (isRotated)
+            {
+                riichiTile = det;
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
