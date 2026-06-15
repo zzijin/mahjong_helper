@@ -125,7 +125,7 @@ public partial class OverlayWindowViewModel : ViewModel
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
             if (_fpsItem != null) OverlayItems.Remove(_fpsItem);
-            string text = $"融合:{t.FusionMs:F0}ms 路由:{t.RoutingMs:F0}ms 分析:{t.AnalysisMs:F0}ms 追踪:{t.TrackingMs:F0}ms | 总:{t.TotalMs:F0}ms ({t.Fps:F0}fps)";
+            string text = $"截取:{t.CaptureMs:F0}ms 推理:{t.DetectMs:F0}ms 融合:{t.FusionMs:F0}ms 路由:{t.RoutingMs:F0}ms 分析:{t.AnalysisMs:F0}ms 追踪:{t.TrackingMs:F0}ms | 总:{t.TotalMs:F0}ms ({t.Fps:F0}fps)";
             var cmd = new TextCommand
             {
                 Text = text,

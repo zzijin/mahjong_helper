@@ -65,7 +65,8 @@ public class GamePipelineService
             _logger.LogError(ex, "FrameFusion 处理失败。");
             return new();
         }
-        double fusionMs = stepSw.Elapsed.TotalMilliseconds;
+        double fusionTotalMs = stepSw.Elapsed.TotalMilliseconds;
+        var fusionTiming = _frameFusion.LastTiming;
 
         if (fullScreenDetections.Count == 0)
         {
@@ -73,7 +74,7 @@ public class GamePipelineService
             return new();
         }
 
-        return ProcessFrame(fullScreenDetections, fusionMs, totalSw);
+        return ProcessFrame(fullScreenDetections, fusionTotalMs, totalSw);
     }
 
 
@@ -102,7 +103,7 @@ public class GamePipelineService
     public List<MahjongAction> ProcessFrame(List<DetectionResult> fullScreenDetections)
         => ProcessFrame(fullScreenDetections, 0, null);
 
-    private List<MahjongAction> ProcessFrame(List<DetectionResult> fullScreenDetections, double fusionMs, Stopwatch? totalSw)
+    private List<MahjongAction> ProcessFrame(List<DetectionResult> fullScreenDetections, double fusionTotalMs, Stopwatch? totalSw)
     {
         if (fullScreenDetections.Count == 0)
         {
@@ -111,6 +112,7 @@ public class GamePipelineService
         }
 
         var stepSw = Stopwatch.StartNew();
+        var fusionTiming = _frameFusion.LastTiming;
 
         // 1. 区域路由 → FrameDetections
         var frameInput = RouteDetections(fullScreenDetections);
@@ -146,10 +148,12 @@ public class GamePipelineService
         }
         double trackingMs = stepSw.Elapsed.TotalMilliseconds;
 
-        double totalMs = totalSw?.Elapsed.TotalMilliseconds ?? fusionMs + routingMs + analysisMs + trackingMs;
+        double totalMs = totalSw?.Elapsed.TotalMilliseconds ?? fusionTotalMs + routingMs + analysisMs + trackingMs;
         _frameStateHub.PublishTiming(new FrameTimingInfo
         {
-            FusionMs = fusionMs,
+            CaptureMs = fusionTiming?.CaptureMs ?? 0,
+            DetectMs = fusionTiming?.DetectMs ?? 0,
+            FusionMs = fusionTiming?.FusionMs ?? fusionTotalMs,
             RoutingMs = routingMs,
             AnalysisMs = analysisMs,
             TrackingMs = trackingMs,

@@ -5,6 +5,11 @@ namespace TileMind.Common.Models;
 /// </summary>
 public class FrameTimingInfo
 {
+    /// <summary>屏幕截取耗时。</summary>
+    public double CaptureMs { get; set; }
+    /// <summary>YOLO 推理耗时。</summary>
+    public double DetectMs { get; set; }
+    /// <summary>多帧融合耗时。</summary>
     public double FusionMs { get; set; }
     public double RoutingMs { get; set; }
     public double AnalysisMs { get; set; }

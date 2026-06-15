@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Drawing;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenCvSharp;
-using System.Collections.Concurrent;
-using System.Drawing;
 using TileMind.Common.Config;
 using TileMind.Common.Models;
 using TileMind.Vision.Detection;
@@ -18,7 +19,11 @@ namespace TileMind.Vision.ScreenCapture
         private readonly IScreenCaptureService _captureService;
         private readonly ILogger<FrameFusionService> _logger;
 
+        /// <summary>最近一帧融合的内部耗时。</summary>
+        public FrameFusionTiming? LastTiming { get; private set; }
+
         // 融合参数
+        private readonly bool _enableFusion;           // 是否启用多帧融合
         private readonly int _fusionFrameCount;       // 参与融合的帧数量，例如 3 帧
         private readonly float _movementThreshold;    // 帧间变化阈值，超过此值认为场景发生变化
         private readonly float _confidenceThreshold;  // 检测置信度阈值
@@ -36,7 +41,8 @@ namespace TileMind.Vision.ScreenCapture
             _logger = logger;
 
             var opts = options.Value;
-            _fusionFrameCount = opts.MaxFusionFrameCount;
+            _enableFusion = opts.EnableFusion;
+            _fusionFrameCount = _enableFusion ? opts.MaxFusionFrameCount : 1;
             _movementThreshold = opts.MovementThreshold;
             _confidenceThreshold = opts.FusionConfidenceThreshold;
             _iouThreshold = opts.FusionIouThreshold;
@@ -68,92 +74,117 @@ namespace TileMind.Vision.ScreenCapture
                 }
             });
 
-            _frameCache.Enqueue(new FusionFrameData
+            if (_enableFusion)
             {
-                Timestamp = DateTime.UtcNow,
-                FusionResult = fusionResult
-            });
+                _frameCache.Enqueue(new FusionFrameData
+                {
+                    Timestamp = DateTime.UtcNow,
+                    FusionResult = fusionResult
+                });
 
-            while (_frameCache.Count > _fusionFrameCount)
-            {
-                _frameCache.TryDequeue(out _);
+                while (_frameCache.Count > _fusionFrameCount)
+                {
+                    _frameCache.TryDequeue(out _);
+                }
             }
 
             return fusionResult;
         }
 
         /// <summary>
-        /// 执行一次多帧融合识别。
+        /// Execute one cycle of multi-frame detection + fusion.
+        /// When fusion is disabled, captures a single frame and returns raw detection.
         /// </summary>
-        /// <returns>融合后的最终识别结果。</returns>
         public List<DetectionResult> ProcessFrameFusion()
         {
-            // 1. 快速连续采集多帧图像
-            var frames = CaptureMultipleFrames(_fusionFrameCount);
+            var totalSw = Stopwatch.StartNew();
+            var stepSw = Stopwatch.StartNew();
 
-            if(frames.Count == 0)
+            // 1. Capture first frame
+            var firstFrame = _captureService.CaptureFrame();
+            double captureMs = stepSw.Elapsed.TotalMilliseconds;
+
+            if (firstFrame == null)
             {
-                _logger.LogError("未能采集到任何帧，跳过融合处理。");
+                _logger.LogError("Screen capture returned null.");
                 return new List<DetectionResult>();
             }
 
-            // 2. 检测场景是否发生显著变化，若无变化则返回上次结果，节省计算
-            if (frames.Count >= 2 && !HasSceneChanged(frames[0], frames[1]))
+            // 2. Scene change check: compare with cached frame, skip detection if unchanged
+            _frameCache.TryPeek(out var lastCached);
+            if (lastCached?.Frame != null && lastCached.FusionResult != null)
             {
-                // 如果缓存中有结果，直接返回最新的融合结果，避免重复推理
-                if (_frameCache.TryPeek(out var lastResult) && lastResult.FusionResult != null)
-                    return lastResult.FusionResult;
-            }
-
-            // 3. 使用对象池中的检测器并行推理每一帧
-            var detectionTasks = new List<Task<List<DetectionResult>>>();
-            foreach (var frame in frames)
-            {
-                var mat = frame;
-                detectionTasks.Add(Task.Run(async () =>
+                if (!HasSceneChanged(firstFrame, lastCached.Frame))
                 {
-                    // 从对象池获取一个检测器实例
-                    var detector = await _detectorPool.RentAsync();
-                    if(detector == null)
-                    {
-                        _logger.LogError("无法从对象池获取检测器实例，跳过当前帧的检测。");
-                        return [];
-                    }
-                    try
-                    {
-                        // 将 Bitmap 转换为 Mat 以供检测器使用
-                        // 执行检测
-                        var result = detector.Detect(mat);
-
-                        mat.Dispose();
-                        return result;
-                    }
-                    finally
-                    {
-                        // 使用完毕后归还检测器到对象池
-                        _detectorPool.Return(detector);
-                    }
-                }));
+                    firstFrame.Dispose();
+                    LastTiming = new FrameFusionTiming { CaptureMs = captureMs, TotalMs = totalSw.Elapsed.TotalMilliseconds };
+                    return lastCached.FusionResult;
+                }
             }
+
+            // 3. Capture remaining frames if fusion enabled
+            var frames = new List<Mat> { firstFrame };
+            if (_enableFusion)
+            {
+                for (int i = 1; i < _fusionFrameCount; i++)
+                {
+                    var f = _captureService.CaptureFrame();
+                    if (f != null) frames.Add(f);
+                    else break;
+                }
+            }
+            double totalCaptureMs = stepSw.Elapsed.TotalMilliseconds;
+
+            // 4. Run YOLO detection on all frames in parallel
+            stepSw.Restart();
+            var detectionTasks = frames.Select(frame =>
+                Task.Run<List<DetectionResult>>(async () =>
+                {
+                    var detector = await _detectorPool.RentAsync();
+                    if (detector == null) return new List<DetectionResult>();
+                    try { return detector.Detect(frame); }
+                    finally { _detectorPool.Return(detector); }
+                })).ToArray();
+
             var allFrameResults = Task.WhenAll(detectionTasks).Result;
+            double detectMs = stepSw.Elapsed.TotalMilliseconds;
 
-            // 4. 对多帧检测结果进行融合（加权投票）
-            var fusionResult = FuseResults(allFrameResults);
+            // 5. Fuse or take single result
+            stepSw.Restart();
+            var fusionResult = _enableFusion ? FuseResults(allFrameResults) : allFrameResults[0];
+            double fuseMs = stepSw.Elapsed.TotalMilliseconds;
 
-            // 5. 将融合结果加入滑动窗口缓存，以备下次使用
+            // 6. Dispose captured frames (except the one we cache via Clone)
+            var cacheFrame = frames[^1].Clone();
+            foreach (var f in frames) f.Dispose();
+
+            // 7. Update cache
             _frameCache.Enqueue(new FusionFrameData
             {
                 Timestamp = DateTime.UtcNow,
+                Frame = cacheFrame,
                 FusionResult = fusionResult
             });
+            EnforceCacheLimit();
 
-            // 6. 保持缓存大小不超过设定的融合帧数
-            while (_frameCache.Count > _fusionFrameCount)
+            LastTiming = new FrameFusionTiming
             {
-                _frameCache.TryDequeue(out _);
-            }
+                CaptureMs = totalCaptureMs,
+                DetectMs = detectMs,
+                FusionMs = fuseMs,
+                TotalMs = totalSw.Elapsed.TotalMilliseconds
+            };
 
             return fusionResult;
+        }
+
+        private void EnforceCacheLimit()
+        {
+            while (_frameCache.Count > 1) // keep only the most recent
+            {
+                if (_frameCache.TryDequeue(out var old))
+                    old.Frame?.Dispose();
+            }
         }
 
         /// <summary>
@@ -287,6 +318,7 @@ namespace TileMind.Vision.ScreenCapture
         private class FusionFrameData
         {
             public DateTime Timestamp { get; set; }
+            public Mat Frame { get; set; }
             public List<DetectionResult> FusionResult { get; set; }
         }
     }
