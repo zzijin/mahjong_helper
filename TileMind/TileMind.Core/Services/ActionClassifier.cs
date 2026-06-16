@@ -100,6 +100,37 @@ public class ActionClassifier
             return actions;
         }
 
+        // 3b. 出牌被立即吃/碰/杠（牌未落入牌河即被取走）: Hand -1, Pond 不变
+        if (handDiff == -1 && delta.PondAdded.Count == 0 && delta.PondRemoved.Count == 0 && delta.MeldsAdded.Count == 0)
+        {
+            actions.Add(new MahjongAction
+            {
+                ActionType = ActionType.Discard,
+                Player = seat,
+                Tiles = delta.HandRemoved.ToList()
+            });
+            return actions;
+        }
+
+        // 3c. 同帧摸牌+出牌，出牌被立即取走: Hand 不变, Pond 不变, 但手牌有增有减
+        if (handDiff == 0 && delta.PondAdded.Count == 0 && delta.MeldsAdded.Count == 0
+            && delta.HandAdded.Count > 0 && delta.HandRemoved.Count > 0)
+        {
+            actions.Add(new MahjongAction
+            {
+                ActionType = ActionType.Draw,
+                Player = seat,
+                Tiles = delta.HandAdded.ToList()
+            });
+            actions.Add(new MahjongAction
+            {
+                ActionType = ActionType.Discard,
+                Player = seat,
+                Tiles = delta.HandRemoved.ToList()
+            });
+            return actions;
+        }
+
         // 4. Kakan (加杠)：已有碰升级为杠
         if (delta.UpgradedMeldIndex >= 0)
         {
