@@ -5,26 +5,27 @@
 ## 架构概览
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    TileMind.UI                       │
-│              WPF 桌面应用 / Overlay 叠加层            │
-├─────────────────────────────────────────────────────┤
-│                   TileMind.Core                      │
-│              DI 注册 / 对局状态追踪 / 动作分类          │
-├──────────────┬──────────────────┬───────────────────┤
-│ TileMind.AI  │ TileMind.Vision  │ TileMind.Common    │
-│  AI 决策     │  屏幕捕获 DXGI    │  共享模型 / 配置     │
-│  (占位)      │  YOLOv8 推理     │  日志 / 工具类      │
-│              │  多帧融合         │                    │
-└──────────────┴──────────────────┴───────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                       TileMind.UI                        │
+│              WPF 桌面应用 / Overlay 叠加层                 │
+├─────────────────────────────────────────────────────────┤
+│                      TileMind.Core                       │
+│     DI 注册 / 静态分析 / 牌型分析 / 对局状态追踪 / 动作分类   │
+├──────────────┬──────────────┬──────────────┬─────────────┤
+│ TileMind.AI  │ TileMind.Vision │ TileMind.Common │ TileMind.Algorithm │
+│  AI 决策     │ DXGI 捕获       │ 共享模型(配置   │ RiichiSharp 适配层 │
+│  (占位)      │ YOLOv8 推理    │ 日志/工具类     │ 向听/听牌/得点计算  │
+│              │ 多帧融合        │                 │                    │
+└──────────────┴──────────────┴──────────────┴─────────────┘
 ```
 
 ## 模块说明
 
 | 模块 | 功能 |
 |------|------|
-| **TileMind.Common** | 共享数据模型（`TileType`, `DetectionResult`, `GameState` 等）、配置选项、日志扩展 |
-| **TileMind.Core** | 依赖注入胶水层、**静态分析**（手牌/副露分离、副露类型判定、宝牌映射）、**对局状态追踪**（可选：跨帧 tile 匹配、新副露检测、动作分类） |
+| **TileMind.Common** | 共享数据模型（`TileType`, `DetectionResult`, `GameState`, `TileAnalysisResult` 等）、配置选项、日志扩展 |
+| **TileMind.Algorithm** | **RiichiSharp 适配层** — 牌型映射、手牌格式转换、牌型分析服务（向听数、听牌判定、打牌推荐、胡牌得点） |
+| **TileMind.Core** | 依赖注入胶水层、**静态分析**（手牌/副露分离、副露类型、宝牌、立直）、**牌型分析**（调用 RiichiSharp）、**对局状态追踪**（可选：跨帧匹配、动作分类） |
 | **TileMind.Vision** | DXGI 桌面复制 API 屏幕捕获、YOLOv8 ONNX 推理（支持 CUDA FP32/FP16）、多帧融合 |
 | **TileMind.AI** | AI 决策模块占位（后续实现牌效分析、防守判断等） |
 | **TileMind.UI** | WPF-UI 桌面应用、透明 Overlay 叠加层（识别框/区域标记/耗时统计/开关控制）、导航/设置页面 |
@@ -37,13 +38,14 @@
     → YOLOv8 推理 (ONNX Runtime, GPU)
     → 多帧融合 (加权投票, 场景变化检测)
     → 区域路由 (按 ScreenCaptureOptions 派生区域分发至各玩家/区域)
-    → 静态分析 (FrameAnalyzerService: 手牌/副露分离, 副露类型, 宝牌, 活跃玩家, 立直检测)
-    ├─→ Stage 1 UI: 识别框 + 区域标记叠加层 (每帧)
+    → 静态分析 (FrameAnalyzerService: 手牌/副露分离, 副露类型, 宝牌, 立直检测)
+    → 牌型分析 (TileAnalysisService: 向听数, 牌剩余, 打牌推荐/胡牌得点)
+    ├─→ Stage 1 UI: 识别框 + 区域标记 + 耗时统计 + 牌型分析 叠加层 (每帧)
     └─→ [可选] 状态追踪 (GameStateTracker: 帧间匹配, 动作分类, 错误帧丢弃)
          └─→ Stage 2 UI: 动作日志 (仅追踪模式)
 ```
 
-状态追踪可通过 `PipelineOptions.EnableStateTracking = false` 关闭，仅保留静态分析输出。
+牌型分析基于 [RiichiSharp](https://github.com/zzijin/RiichiSharp)（自研 .NET 麻将算法库）。状态追踪可通过 `PipelineOptions.EnableStateTracking = false` 关闭。
 
 ### 静态分析 (单帧, 无历史)
 
@@ -167,8 +169,10 @@ TileMind/
 │   ├── Helpers/            #   扩展方法 / 几何计算 / 配置加载
 │   ├── Logging/            #   日志配置
 │   └── Models/             #   数据模型
+├── TileMind.Algorithm/     # 算法适配层
+│   └── (空白，待用户迁移)     #   RiichiSharp 桥接 / 牌型分析
 ├── TileMind.Core/          # 核心层
-│   └── Services/           #   DI 注册 / 静态分析 / 状态追踪 / 动作分类
+│   └── Services/           #   DI 注册 / 静态分析 / 牌型分析 / 状态追踪 / 动作分类
 ├── TileMind.Vision/        # 视觉层
 │   ├── Detection/          #   YOLOv8 检测器 / 对象池
 │   ├── ScreenCapture/      #   DXGI 捕获 / 帧融合
@@ -188,7 +192,8 @@ TileMind/
 - **覆盖层绘制**：✅ 已验证完成（识别框、区域标记、耗时统计、鼠标穿透、高 DPI 支持）
 
 ![程序运行示例](Docs/Images/程序运行示例图001.png)
-- **静态分析**：🔧 架构就绪，识别精度待调优（手牌/副露分离、副露类型、宝牌、活跃玩家、立直）
+- **静态分析**：🔧 架构就绪，识别精度待调优（手牌/副露分离、副露类型、宝牌、立直）
+- **牌型分析**：✅ 已集成 [RiichiSharp](https://github.com/zzijin/RiichiSharp)（向听数、听牌判定、打牌推荐、胡牌得点、牌剩余统计）— UI 展示待完善
 - **状态追踪**：🔧 架构就绪，跨帧匹配和动作分类逻辑待调优
 
 ## 待完成

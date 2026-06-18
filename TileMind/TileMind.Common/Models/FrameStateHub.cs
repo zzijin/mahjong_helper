@@ -15,6 +15,9 @@ public class FrameStateHub
     /// <summary>帧耗时（每帧都发，Pipeline 元数据）。</summary>
     public event Action<FrameTimingInfo>? FrameTiming;
 
+    /// <summary>牌型分析结果（每帧都发）。</summary>
+    public event Action<TileAnalysisResult>? TileAnalysisReady;
+
     public void PublishAnalysis(AnalyzedFrame analysis)
     {
         FrameAnalyzed?.Invoke(analysis);
@@ -28,5 +31,10 @@ public class FrameStateHub
     public void PublishTiming(FrameTimingInfo timing)
     {
         FrameTiming?.Invoke(timing);
+    }
+
+    public void PublishTileAnalysis(TileAnalysisResult analysis)
+    {
+        TileAnalysisReady?.Invoke(analysis);
     }
 }

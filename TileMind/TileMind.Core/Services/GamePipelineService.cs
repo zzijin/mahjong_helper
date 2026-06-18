@@ -15,6 +15,7 @@ public class GamePipelineService
 {
     private readonly FrameFusionService _frameFusion;
     private readonly FrameAnalyzerService _analyzer;
+    private readonly TileMind.Algorithm.TileAnalysisService _tileAnalysis;
     private readonly GameRecorderService _gameRecorder;
     private readonly ScreenCaptureOptions _screenOpts;
     private readonly PipelineOptions _pipelineOpts;
@@ -24,6 +25,7 @@ public class GamePipelineService
     public GamePipelineService(
         FrameFusionService frameFusion,
         FrameAnalyzerService analyzer,
+        TileMind.Algorithm.TileAnalysisService tileAnalysis,
         GameRecorderService gameRecorder,
         ScreenCaptureOptions screenOpts,
         PipelineOptions pipelineOpts,
@@ -32,6 +34,7 @@ public class GamePipelineService
     {
         _frameFusion = frameFusion;
         _analyzer = analyzer;
+        _tileAnalysis = tileAnalysis;
         _gameRecorder = gameRecorder;
         _screenOpts = screenOpts;
         _pipelineOpts = pipelineOpts;
@@ -125,6 +128,17 @@ public class GamePipelineService
 
         // 3. Stage 1 UI 发布（每帧都发）
         _frameStateHub.PublishAnalysis(analysis);
+
+        // 牌型分析（每帧都发）
+        try
+        {
+            var tileResult = _tileAnalysis.Analyze(analysis);
+            _frameStateHub.PublishTileAnalysis(tileResult);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "牌型分析失败。");
+        }
 
         // 4. 状态追踪（可选）
         List<MahjongAction> actions;

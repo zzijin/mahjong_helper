@@ -7,14 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.7" />
+    <PackageReference Include="RiichiSharp" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TileMind.AI\TileMind.AI.csproj" />
-    <ProjectReference Include="..\TileMind.Algorithm\TileMind.Algorithm.csproj" />
     <ProjectReference Include="..\TileMind.Common\TileMind.Common.csproj" />
-    <ProjectReference Include="..\TileMind.Vision\TileMind.Vision.csproj" />
   </ItemGroup>
 
 </Project>

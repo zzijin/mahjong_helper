@@ -56,6 +56,9 @@ namespace TileMind.Core.Services
                 //注册静态分析服务
                 services.AddScoped<FrameAnalyzerService>();
 
+                //注册牌型分析服务
+                services.AddScoped<TileMind.Algorithm.TileAnalysisService>();
+
                 //注册游戏状态追踪服务
                 services.AddScoped<GameStateTracker>();
                 services.AddScoped<GameRecorderService>();

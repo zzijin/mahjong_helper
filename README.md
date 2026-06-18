@@ -8,7 +8,8 @@
 mahjong_tool/
 ├── TileMind/                # 主程序 (.NET 10, C#)
 │   ├── TileMind.Common/     #   共享模型、配置、日志
-│   ├── TileMind.Core/       #   DI 注册、对局状态追踪、动作分类
+│   ├── TileMind.Algorithm/  #   RiichiSharp 适配层（牌型分析）
+│   ├── TileMind.Core/       #   DI 注册、静态分析、对局状态追踪、动作分类
 │   ├── TileMind.Vision/     #   DXGI 屏幕捕获、YOLOv8 ONNX 推理、多帧融合
 │   ├── TileMind.AI/         #   AI 决策（占位）
 │   ├── TileMind.UI/         #   WPF 桌面应用、透明叠加层
@@ -32,9 +33,10 @@ mahjong_tool/
 
 详见 **[TileMind/README.md](./TileMind/README.md)**，完整文档包含：
 
-- **架构概览** — 6 个项目分层设计（Common → Vision / Core / AI → UI）
-- **核心流程** — 屏幕捕获 → YOLOv8 推理 → 多帧融合 → 区域路由 → 静态分析 → [可选] 状态追踪 → 叠加层显示
-- **静态分析** — 手牌/副露分离、副露类型判定、宝牌映射、活跃玩家、立直检测
+- **架构概览** — 7 个项目分层设计（Common → Vision / Core / AI / Algorithm → UI）
+- **核心流程** — 屏幕捕获 → YOLOv8 推理 → 多帧融合 → 区域路由 → 静态分析 → 牌型分析 → [可选] 状态追踪 → 叠加层显示
+- **静态分析** — 手牌/副露分离、副露类型判定、宝牌映射、立直检测
+- **牌型分析** — 基于 [RiichiSharp](https://github.com/zzijin/RiichiSharp)：向听数、听牌判定、打牌推荐、胡牌得点、牌剩余统计
 - **对局状态追踪** — 帧间 IoU 匹配、动作分类（摸/打/吃/碰/杠/加杠/暗杠）
 - **覆盖层显示** — 识别框、区域标记、耗时统计，支持功能开关
 - **构建与运行** — 环境要求、构建命令、配置文件说明
@@ -58,11 +60,13 @@ mahjong_tool/
 |------|------|
 | TileMind.Common（数据模型、配置） | ✅ 完成 |
 | TileMind.Vision（屏幕捕获、YOLO 推理、多帧融合） | ✅ 完成 |
+| TileMind.Algorithm（RiichiSharp 适配、牌型分析） | ✅ 已集成 |
 | TileMind.Core（DI、静态分析、状态追踪、动作分类） | ✅ 架构就绪 |
 | TileMind.UI（WPF 框架、Overlay 绘制） | ✅ 覆盖层已验证 |
 | TileMind.AI（牌效分析、防守判断） | ⏳ 占位，待实现 |
 | 宝牌映射 | ✅ 完成 |
 | 立直检测（静态） | ✅ 完成 |
+| 牌型分析（向听/听牌/得点） | ✅ 已集成 — UI 待完善 |
 | 静态分析+状态追踪调优 | 🔧 进行中 |
 | 多操作帧分析 | ⏳ 待实现 |
 | 对局记录导出（牌谱格式） | ⏳ 待实现 |
