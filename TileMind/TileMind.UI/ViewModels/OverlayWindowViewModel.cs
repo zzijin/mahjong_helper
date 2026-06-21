@@ -58,6 +58,7 @@ public partial class OverlayWindowViewModel : ViewModel
 
         hub.FrameAnalyzed += OnFrameAnalyzed;
         hub.FrameTiming += OnFrameTiming;
+        hub.TileAnalysisReady += OnTileAnalysisReady;
     }
 
     private bool CanStartPipeline() => !IsPipelineRunning;
@@ -139,6 +140,55 @@ public partial class OverlayWindowViewModel : ViewModel
         });
     }
 
+    private DrawingInfo? _analysisItem;
+
+    private void OnTileAnalysisReady(TileAnalysisResult r)
+    {
+        if (!_overlayOpts.ShowWinningAnalysis) return;
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            if (_analysisItem != null) OverlayItems.Remove(_analysisItem);
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine(r.IsTenpai
+                ? $"听牌! 等牌 {r.WinOptions.Count} 种"
+                : $"向听数: {r.Shanten}");
+
+            if (r.IsTenpai)
+            {
+                foreach (var w in r.WinOptions.OrderByDescending(w => w.Points))
+                {
+                    string tileName = w.WinTile.ToString();
+                    string yakuStr = w.YakuNames.Count > 0
+                        ? string.Join(" ", w.YakuNames.Take(4))
+                        : "";
+                    sb.AppendLine($"  {tileName} 剩{w.Remaining}张 {w.Han}翻{w.Fu}符 {w.Points}点  {yakuStr}");
+                }
+            }
+            else if (r.DiscardOptions.Count > 0)
+            {
+                sb.AppendLine("--- 打牌推荐 ---");
+                foreach (var d in r.DiscardOptions.Take(5))
+                {
+                    string tileName = d.DiscardTile.ToString();
+                    sb.AppendLine($"  打{tileName} → 向听{d.ShantenAfter} 受入{d.UniqueUkeire}种{d.TotalUkeire}枚");
+                }
+            }
+
+            var cmd = new TextCommand
+            {
+                Text = sb.ToString().TrimEnd(),
+                Position = new Point(SystemParameters.WorkArea.Right - 16, 48),
+                FontSize = 13,
+                Alignment = TextAlignment.Right,
+                Foreground = new SolidColorBrush(Color.FromArgb(230, 255, 220, 140)),
+                Background = new SolidColorBrush(Color.FromArgb(180, 20, 20, 20))
+            };
+            _analysisItem = new MahjongTileDrawingInfo(Array.Empty<DetectionResult>(), new List<IDrawingCommand> { cmd });
+            OverlayItems.Add(_analysisItem);
+        });
+    }
+
     /// <summary>用当前帧的识别结果替换所有检测框。</summary>
     private void RefreshDetectionBoxes(AnalyzedFrame analysis)
     {
@@ -198,7 +248,7 @@ public partial class OverlayWindowViewModel : ViewModel
     private void RemoveDetectionBoxes()
     {
         var toRemove = OverlayItems
-            .Where(i => i is not ScreenRegionDrawingInfo)
+            .Where(i => i is not ScreenRegionDrawingInfo && i != _fpsItem && i != _analysisItem)
             .ToList();
         foreach (var item in toRemove)
             OverlayItems.Remove(item);
