@@ -150,9 +150,13 @@ public partial class OverlayWindowViewModel : ViewModel
             if (_analysisItem != null) OverlayItems.Remove(_analysisItem);
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine(r.IsTenpai
-                ? $"听牌! 等牌 {r.WinOptions.Count} 种"
-                : $"向听数: {r.Shanten}");
+            string header = r.Shanten switch
+            {
+                -1 => "和了!",
+                0 => $"听牌! 等牌 {r.WinOptions.Count} 种",
+                _ => $"向听数: {r.Shanten}"
+            };
+            sb.AppendLine(header);
 
             if (r.IsTenpai)
             {

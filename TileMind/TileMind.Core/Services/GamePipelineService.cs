@@ -35,6 +35,7 @@ public class GamePipelineService
         _frameFusion = frameFusion;
         _analyzer = analyzer;
         _tileAnalysis = tileAnalysis;
+        TileMind.Algorithm.TileAnalysisService.DebugLog = msg => _logger?.LogDebug(msg);
         _gameRecorder = gameRecorder;
         _screenOpts = screenOpts;
         _pipelineOpts = pipelineOpts;

@@ -10,6 +10,9 @@ namespace TileMind.Algorithm;
 /// </summary>
 public class TileAnalysisService
 {
+    /// <summary>用于输出调试日志的可选回调。</summary>
+    public static Action<string>? DebugLog { get; set; }
+
     /// <summary>
     /// 基于单帧静态分析结果，对当前本家手牌做完整牌型分析。
     /// 场风/自风暂用默认值（东/东），后续接入 InfoArea 解析后修正。
@@ -22,29 +25,36 @@ public class TileAnalysisService
 
         var result = new TileAnalysisResult();
 
-        // 1. 构建牌谱字符串
         string handStr = HandStringBuilder.BuildHandString(self.HandTiles);
+        if (string.IsNullOrEmpty(handStr))
+            return new TileAnalysisResult { Shanten = 6 };
+
         int calledMelds = HandStringBuilder.CountCalledMelds(self.Melds);
         string visibleStr = HandStringBuilder.BuildVisibleString(analysis);
-        int akaCount = HandStringBuilder.CountAkaDora(self.HandTiles);
 
-        // 2. 向听数计算
-        var shantenResult = MahjongEngine.Shanten(handStr, calledMelds);
-        result.Shanten = shantenResult.Shanten;
-
-        // 3. 牌山剩余统计
+        int shanten;
+        try { shanten = MahjongEngine.Shanten(handStr, calledMelds).Shanten; }
+        catch (Exception ex)
+        {
+            DebugLog?.Invoke($"[TileAnalysis] Shanten failed: {ex.Message}");
+            return new TileAnalysisResult { Shanten = 6 };
+        }
+        result.Shanten = shanten;
         result.RemainingCounts = CalcRemainingCounts(analysis, handStr);
 
-        // 4. 听牌 / 未听牌分支
-        if (result.IsTenpai)
+        if (shanten == 0)
+        {
+            int akaCount = HandStringBuilder.CountAkaDora(self.HandTiles);
             FillWinOptions(result, self, handStr, calledMelds, visibleStr, akaCount);
-        else
+        }
+        else if (shanten > 0)
+        {
             FillDiscardOptions(result, handStr, calledMelds);
+        }
+        // shanten == -1: already completed hand, no further analysis needed
 
         return result;
     }
-
-    // ─────────────── 听牌分支：计算每种等牌的胡牌点数 ───────────────
 
     private static void FillWinOptions(
         TileAnalysisResult result, PlayerFrameAnalysis self,
@@ -60,8 +70,6 @@ public class TileAnalysisService
         {
             var winTile = TileTypeMapper.ToTileMind(wait);
             var rsTile = TileTypeMapper.ToRiichiSharp(winTile);
-
-            // 构建胡牌时的完整手牌字符串
             string scoringHand = HandStringBuilder.BuildScoringHandString(self) +
                                  rsTile.Number + SuitChar(rsTile.Suit);
 
@@ -88,9 +96,9 @@ public class TileAnalysisService
                     YakuNames = score.YakuList?.Select(y => y.ToString()).ToList() ?? new()
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                // Score 计算失败时至少记录等牌和剩余张数
+                DebugLog?.Invoke($"[TileAnalysis] Score failed for {winTile}: {ex.Message}");
                 result.WinOptions.Add(new WinOption
                 {
                     WinTile = winTile,
@@ -99,8 +107,6 @@ public class TileAnalysisService
             }
         }
     }
-
-    // ─────────────── 未听牌分支：打牌效率分析 ───────────────
 
     private static void FillDiscardOptions(
         TileAnalysisResult result, string handStr, int calledMelds)
@@ -125,53 +131,39 @@ public class TileAnalysisService
                 });
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 计算失败时 DiscardOptions 留空
+            DebugLog?.Invoke($"[TileAnalysis] EffectiveDiscards failed: {ex.Message}");
         }
     }
 
-    // ─────────────── 牌剩余统计 ───────────────
-
-    private static Dictionary<TileType, int> CalcRemainingCounts(
-        AnalyzedFrame analysis, string selfHandStr)
+    private static Dictionary<TileType, int> CalcRemainingCounts(AnalyzedFrame analysis, string selfHandStr)
     {
         var known = new int[34];
-
-        // 本家手牌
         CountTiles(known, selfHandStr);
 
-        // 本家副露
         if (analysis.Players.TryGetValue(SeatPosition.Self, out var self))
         {
             foreach (var meld in self.Melds)
-            {
                 foreach (var det in meld.Tiles)
                     known[(int)TileTypeMapper.ToRiichiSharp(det.TileType).Id]++;
-            }
         }
 
-        // 所有弃牌 + 其他玩家副露 + 宝牌指示牌
         foreach (var (_, pondDets) in analysis.DiscardPondDetections)
-        {
             foreach (var det in pondDets)
                 known[(int)TileTypeMapper.ToRiichiSharp(det.TileType).Id]++;
-        }
 
         foreach (var (seat, player) in analysis.Players)
         {
             if (seat == SeatPosition.Self) continue;
             foreach (var meld in player.Melds)
-            {
                 foreach (var det in meld.Tiles)
                     known[(int)TileTypeMapper.ToRiichiSharp(det.TileType).Id]++;
-            }
         }
 
         foreach (var det in analysis.DoraIndicatorDetections)
             known[(int)TileTypeMapper.ToRiichiSharp(det.TileType).Id]++;
 
-        // 每种牌最多 4 张
         var result = new Dictionary<TileType, int>();
         for (int i = 0; i < 34; i++)
             result[TileTypeMapper.ToTileMind(new RiichiSharp.Tiles.Tile((byte)i))] = Math.Max(0, 4 - known[i]);
