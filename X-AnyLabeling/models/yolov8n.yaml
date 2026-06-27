@@ -1,5 +1,5 @@
 type: yolov8
-name: yolov8n-mahjong-r20250623
+name: yolov8n-mahjong
 provider: Ultralytics
 display_name: YOLOv8n (Mahjong Tiles)
 model_path: yolov8n.onnx
