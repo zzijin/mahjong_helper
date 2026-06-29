@@ -23,19 +23,22 @@ public partial class SettingsViewModel : ViewModel
 
     public OverlayOptions Overlay { get; }
     public PipelineOptions Pipeline { get; }
+    public ScreenCaptureOptions ScreenCapture { get; }
     public YoloOptions Yolo { get; }
     public FrameFusionOptions Fusion { get; }
     public GameStateTrackerOptions Tracker { get; }
 
     public SettingsViewModel(
-        OverlayOptions overlay,
-        PipelineOptions pipeline,
+        IOptions<OverlayOptions> overlay,
+        IOptions<PipelineOptions> pipeline,
+        IOptions<ScreenCaptureOptions> screenCapture,
         IOptions<YoloOptions> yolo,
         IOptions<FrameFusionOptions> fusion,
         IOptions<GameStateTrackerOptions> tracker)
     {
-        Overlay = overlay;
-        Pipeline = pipeline;
+        Overlay = overlay.Value;
+        Pipeline = pipeline.Value;
+        ScreenCapture = screenCapture.Value;
         Yolo = yolo.Value;
         Fusion = fusion.Value;
         Tracker = tracker.Value;
