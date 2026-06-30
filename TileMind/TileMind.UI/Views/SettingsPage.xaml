@@ -45,6 +45,10 @@
                     <CheckBox Content="识别框显示" IsChecked="{Binding ViewModel.Overlay.ShowDetectionBoxes}" />
                     <CheckBox Content="识别区域显示" IsChecked="{Binding ViewModel.Overlay.ShowScreenRegions}" />
                     <CheckBox Content="耗时统计显示" IsChecked="{Binding ViewModel.Overlay.ShowTimingStats}" />
+                    <CheckBox Content="牌型分析显示 (听牌/打牌推荐/得点)" IsChecked="{Binding ViewModel.Overlay.ShowWinningAnalysis}" />
+                    <CheckBox Content="牌堆剩余牌显示" IsChecked="{Binding ViewModel.Overlay.ShowRemainingTiles}" />
+                    <CheckBox Content="动作记录显示（未实现）" IsEnabled="False" IsChecked="{Binding ViewModel.Overlay.ShowActionLog}" />
+                    <CheckBox Content="AI决策显示（未实现）" IsEnabled="False" IsChecked="{Binding ViewModel.Overlay.ShowAIDecision}" />
                 </StackPanel>
 
                 <!-- 屏幕捕获 -->

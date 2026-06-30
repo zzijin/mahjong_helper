@@ -1,10 +1,10 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
-using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using TileMind.Common.Config;
 using TileMind.Common.Models;
 using TileMind.Core.Services;
@@ -141,9 +141,43 @@ public partial class OverlayWindowViewModel : ViewModel
     }
 
     private DrawingInfo? _analysisItem;
+    private DrawingInfo? _remainingItem;
 
     private void OnTileAnalysisReady(TileAnalysisResult r)
     {
+        // 牌堆剩余牌
+        if (_overlayOpts.ShowRemainingTiles)
+        {
+            Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                if (_remainingItem != null) OverlayItems.Remove(_remainingItem);
+                var remaining = r.RemainingCounts.Where(kv => kv.Value > 0)
+                    .OrderBy(kv => (int)kv.Key)
+                    .Select(kv => $"{kv.Key}:{kv.Value}");
+                string text = "剩余: " + string.Join(" ", remaining);
+                var cmd = new TextCommand
+                {
+                    Text = text,
+                    Position = new Point(SystemParameters.WorkArea.Right - 16,
+                        SystemParameters.WorkArea.Bottom - 24),
+                    FontSize = 12,
+                    Alignment = TextAlignment.Right,
+                    Foreground = new SolidColorBrush(Color.FromArgb(200, 180, 220, 255)),
+                    Background = new SolidColorBrush(Color.FromArgb(160, 20, 20, 20))
+                };
+                _remainingItem = new MahjongTileDrawingInfo(Array.Empty<DetectionResult>(), new List<IDrawingCommand> { cmd });
+                OverlayItems.Add(_remainingItem);
+            });
+        }
+        else if (_remainingItem != null)
+        {
+            Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                OverlayItems.Remove(_remainingItem);
+                _remainingItem = null;
+            });
+        }
+
         if (!_overlayOpts.ShowWinningAnalysis) return;
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
@@ -252,7 +286,7 @@ public partial class OverlayWindowViewModel : ViewModel
     private void RemoveDetectionBoxes()
     {
         var toRemove = OverlayItems
-            .Where(i => i is not ScreenRegionDrawingInfo && i != _fpsItem && i != _analysisItem)
+            .Where(i => i is not ScreenRegionDrawingInfo && i != _fpsItem && i != _analysisItem && i != _remainingItem)
             .ToList();
         foreach (var item in toRemove)
             OverlayItems.Remove(item);
