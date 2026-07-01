@@ -18,24 +18,33 @@ public partial class ScreenSplitterWindow : Window
         if (_splitterControl.Parent is System.Windows.Controls.Panel parent)
             parent.Children.Remove(_splitterControl);
         RootGrid.Children.Insert(0, _splitterControl);
+
+        _viewModel.SetControl(_splitterControl);
+
         Loaded += OnLoaded;
         Closed += OnClosed;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _viewModel.LoadConfig(_splitterControl);
-    }
-
-    private void LoadButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.ReloadConfig(_splitterControl);
+        _viewModel.LoadConfig();
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.SaveConfig(_splitterControl);
+        _viewModel.SaveConfigCommand.Execute(null);
         MessageBox.Show("区域配置已保存。", "TileMind", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void RelocateButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.RelocateCommand.Execute(null);
+    }
+
+    private void ResetDefaultButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.ResetToDefaultCommand.Execute(null);
+        MessageBox.Show("Ratio 已恢复为默认值并保存。", "TileMind", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void OnClosed(object? sender, EventArgs e)

@@ -11,13 +11,16 @@
     <Grid x:Name="RootGrid">
         <!-- 顶部工具栏 -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12">
-            <Button x:Name="LoadButton" Content="重新加载" Width="88" Height="32" Margin="4"
+            <Button Content="重定位" Width="88" Height="32" Margin="4"
                     Foreground="White" Background="#404040" BorderBrush="#666"
-                    Click="LoadButton_Click" />
-            <Button x:Name="SaveButton" Content="保存配置" Width="88" Height="32" Margin="4"
+                    Click="RelocateButton_Click" />
+            <Button Content="恢复默认" Width="88" Height="32" Margin="4"
+                    Foreground="White" Background="#604020" BorderBrush="#886644"
+                    Click="ResetDefaultButton_Click" />
+            <Button Content="保存配置" Width="88" Height="32" Margin="4"
                     Foreground="White" Background="#204080" BorderBrush="#4488cc"
                     Click="SaveButton_Click" />
-            <Button x:Name="CloseButton" Content="关闭" Width="72" Height="32" Margin="4"
+            <Button Content="关闭" Width="72" Height="32" Margin="4"
                     Foreground="White" Background="#804040" BorderBrush="#cc6666"
                     Click="CloseButton_Click" />
         </StackPanel>

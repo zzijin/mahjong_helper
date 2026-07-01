@@ -7,6 +7,7 @@ using TileMind.Common.Logging;
 using TileMind.Common.Models;
 using TileMind.Vision.Detection;
 using TileMind.Vision.ScreenCapture;
+using RectangleF = System.Drawing.RectangleF;
 
 namespace TileMind.Core.Services
 {
@@ -42,7 +43,16 @@ namespace TileMind.Core.Services
 
                 var screenOpts = SettingConfigExtensions.Load<ScreenCaptureOptions>(
                     ScreenCaptureOptions.SettingFilePath) ?? new ScreenCaptureOptions();
-                screenOpts.ComputeDerivedAreas();
+
+                // 先尝试用游戏窗口客户区解析，失败则用全屏 Fallback
+                var clientRect = WindowFinderHelper.FindClientRect(screenOpts.GameProcessName ?? "");
+                RectangleF refRect;
+                if (clientRect.HasValue)
+                    refRect = clientRect.Value;
+                else
+                    refRect = WindowFinderHelper.GetMonitorBounds(screenOpts.OutputIndex);
+
+                screenOpts.ResolveAbsoluteCoordsFromRatios(refRect);
                 services.AddSingleton(screenOpts);
             }
 

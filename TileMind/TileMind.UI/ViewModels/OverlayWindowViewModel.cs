@@ -6,11 +6,13 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
 using TileMind.Common.Config;
+using TileMind.Common.Helpers;
 using TileMind.Common.Models;
 using TileMind.Core.Services;
 using TileMind.UI.Overlay;
 using TileMind.UI.Overlay.OverlayBase;
 using TileMind.UI.Overlay.OverlayBase.DrawingCommand;
+using RectangleF = System.Drawing.RectangleF;
 
 namespace TileMind.UI.ViewModels;
 
@@ -105,6 +107,35 @@ public partial class OverlayWindowViewModel : ViewModel
         _pipelineScope?.Dispose();
         _pipelineScope = null;
         IsPipelineRunning = false;
+    }
+
+    /// <summary>
+    /// 重定位：重新查找游戏窗口 → Ratio 解析绝对坐标。失败则保留旧坐标。
+    /// </summary>
+    [RelayCommand]
+    private void RelocateCoordinates()
+    {
+        var clientRect = WindowFinderHelper.FindClientRect(_screenOpts.GameProcessName ?? "");
+        RectangleF refRect;
+        bool usingWindow;
+        if (clientRect.HasValue)
+        {
+            refRect = clientRect.Value;
+            usingWindow = true;
+        }
+        else
+        {
+            refRect = WindowFinderHelper.GetMonitorBounds(_screenOpts.OutputIndex);
+            usingWindow = false;
+        }
+
+        bool ok = _screenOpts.ResolveAbsoluteCoordsFromRatios(refRect);
+        if (ok && usingWindow)
+            _logger.LogInformation("重定位成功：游戏窗口({Proc}) 客户区={Rect}", _screenOpts.GameProcessName, refRect);
+        else if (usingWindow)
+            _logger.LogWarning("重定位: ResolveAbsoluteCoordsFromRatios 返回 false，窗口={Rect}，保留旧坐标", refRect);
+        else
+            _logger.LogWarning("重定位: 未找到游戏窗口({Proc})，使用全屏 Fallback，保留旧坐标", _screenOpts.GameProcessName);
     }
 
     private void OnFrameAnalyzed(AnalyzedFrame analysis)
