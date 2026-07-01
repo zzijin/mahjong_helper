@@ -31,14 +31,13 @@ namespace TileMind.Vision.ScreenCapture
         private bool _disposed;
 
         // 捕获参数
+        ScreenCaptureOptions captureOptions;
         private readonly int _adapterIndex;
         private readonly int _outputIndex;
 
         public DxgiScreenCaptureService(ScreenCaptureOptions options, ILogger<DxgiScreenCaptureService> logger)
         {
-            var opts = options;
-            _adapterIndex = opts.AdapterIndex;
-            _outputIndex = opts.OutputIndex;
+            captureOptions = options;
             _logger = logger;
             InitializeDxgi();
         }
@@ -52,9 +51,9 @@ namespace TileMind.Vision.ScreenCapture
 
                 int adapterCount = _factory.GetAdapterCount();
                 // 获取指定的显卡适配器 (通常是独立显卡)
-                if (_adapterIndex >= 0 && _adapterIndex < adapterCount)
+                if (captureOptions.AdapterIndex >= 0 && captureOptions.AdapterIndex < adapterCount)
                 {
-                    _adapter = _factory.GetAdapter1(_adapterIndex);
+                    _adapter = _factory.GetAdapter1(captureOptions.AdapterIndex);
                 }
                 else
                 {
@@ -67,9 +66,9 @@ namespace TileMind.Vision.ScreenCapture
 
                 // 获取显示器输出
                 int outputCount = _adapter.GetOutputCount();
-                if (_outputIndex >= 0 && _outputIndex < outputCount)
+                if (captureOptions.OutputIndex >= 0 && captureOptions.OutputIndex < outputCount)
                 {
-                    _output = _adapter.GetOutput(_outputIndex);
+                    _output = _adapter.GetOutput(captureOptions.OutputIndex);
                 }
                 else
                 {
